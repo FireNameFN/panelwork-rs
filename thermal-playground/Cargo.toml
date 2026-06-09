@@ -1,0 +1,9 @@
+[package]
+name = "thermal-playground"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ash = { workspace = true }
+sdl3-sys = "0.6.6"
+thermal = { path = "../thermal" }
