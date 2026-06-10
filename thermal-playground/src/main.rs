@@ -1,12 +1,9 @@
 use std::{ffi::CStr, slice};
 
-use ash::{
-    Entry,
-    vk::{self, Handle},
-};
+use ash::vk::{self, Handle};
 use thermal::{
     ext::physical_device::ThPhysicalDeviceIteratorExt,
-    thvk::{device::QueueInfo, instance::ThInstance},
+    thvk::{device::QueueInfo, library::ThLibrary},
 };
 
 fn main() {
@@ -34,19 +31,15 @@ fn main() {
         instance_extensions = f.iter().map(|ptr| CStr::from_ptr(*ptr)).collect::<Vec<_>>();
     }
 
-    let entry;
+    let library = ThLibrary::load().unwrap();
 
-    unsafe {
-        entry = Entry::load().unwrap();
-    }
-
-    let instance = ThInstance::new(
-        &entry,
-        vk::API_VERSION_1_2,
-        &[c"VK_LAYER_KHRONOS_validation"],
-        &instance_extensions,
-    )
-    .unwrap();
+    let instance = library
+        .create_instance(
+            vk::API_VERSION_1_2,
+            &[c"VK_LAYER_KHRONOS_validation"],
+            &instance_extensions,
+        )
+        .unwrap();
 
     unsafe {
         for pd in instance
