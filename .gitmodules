@@ -1,0 +1,3 @@
+[submodule "thermal"]
+	path = thermal
+	url = https://github.com/FireNameFN/thermal-rs.git
