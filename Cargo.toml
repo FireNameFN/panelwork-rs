@@ -2,5 +2,9 @@
 resolver = "3"
 members = ["thermal", "thermal-playground"]
 
+[profile.release]
+lto = true
+strip = true
+
 [workspace.dependencies]
 ash = { git = "https://github.com/ash-rs/ash" }
