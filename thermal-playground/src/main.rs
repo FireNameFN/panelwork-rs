@@ -1,13 +1,19 @@
-use std::{ffi::CStr, slice};
+use std::ffi::CStr;
 
-use ash::vk::{self, Handle};
+use ash::vk::{
+    self, AccessFlags, CommandBufferBeginInfo, CommandBufferLevel, CommandBufferUsageFlags,
+    CommandPoolCreateFlags, Handle, ImageLayout, ImageUsageFlags, PipelineStageFlags,
+    PresentModeKHR, SurfaceKHR,
+};
 use sdl3_sys::{
     events::{SDL_Event, SDL_EventType},
     video::{SDL_WINDOW_RESIZABLE, SDL_WINDOW_VULKAN},
 };
 use thermal::{
+    core::presenter::Presenter,
     ext::physical_device::ThPhysicalDeviceIteratorExt,
     thvk::{device::QueueInfo, library::ThLibrary},
+    util,
 };
 
 fn main() {
@@ -25,14 +31,9 @@ fn main() {
 
         sdl3_sys::vulkan::SDL_Vulkan_LoadLibrary(std::ptr::null());
 
-        let mut count = 0;
-
-        let f = slice::from_raw_parts(
-            sdl3_sys::vulkan::SDL_Vulkan_GetInstanceExtensions(&mut count),
-            count as usize,
-        );
-
-        instance_extensions = f.iter().map(|ptr| CStr::from_ptr(*ptr)).collect::<Vec<_>>();
+        instance_extensions = util::string_array_from_fn(|size| {
+            sdl3_sys::vulkan::SDL_Vulkan_GetInstanceExtensions(size)
+        });
     }
 
     let library = ThLibrary::load().unwrap();
@@ -78,25 +79,50 @@ fn main() {
                 index: family,
                 priorities: &[0.0],
             }],
-            &[],
+            &[c"VK_KHR_swapchain"],
         )
         .unwrap();
 
-    //std::thread::sleep(Duration::from_secs(60));
+    let queue = device.get_queue(family, 0);
+
+    let fence = device.create_fence().unwrap();
+
+    let command_pool = device
+        .create_command_pool(family, CommandPoolCreateFlags::empty())
+        .unwrap();
+
+    let command_buffer = command_pool
+        .allocate_command_buffer(CommandBufferLevel::PRIMARY)
+        .unwrap();
+
+    let mut surface = std::ptr::null_mut();
 
     unsafe {
-        let mut window = std::ptr::null_mut();
-
-        let mut renderer = std::ptr::null_mut();
-
-        sdl3_sys::render::SDL_CreateWindowAndRenderer(
+        let window = sdl3_sys::video::SDL_CreateWindow(
             c"Thermal".as_ptr(),
             1280,
             720,
             SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN,
-            &mut window,
-            &mut renderer,
         );
+
+        sdl3_sys::vulkan::SDL_Vulkan_CreateSurface(
+            window,
+            instance.handle.handle().as_raw() as *mut _,
+            std::ptr::null(),
+            &mut surface,
+        );
+
+        let mut presenter = Presenter::new(
+            &physical_device,
+            &queue,
+            SurfaceKHR::from_raw(surface as u64),
+        )
+        .unwrap();
+
+        presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
+        presenter.present_mode = PresentModeKHR::MAILBOX;
+
+        presenter.set_size(1280, 720).unwrap();
 
         'outer: loop {
             sdl3_sys::events::SDL_WaitEvent(std::ptr::null_mut());
@@ -109,10 +135,69 @@ fn main() {
                 }
             }
 
-            sdl3_sys::render::SDL_RenderClear(renderer);
+            let (index, _) = match presenter.acquire_next_image(u64::MAX) {
+                Err(result) => {
+                    println!("{}", result);
 
-            sdl3_sys::render::SDL_RenderPresent(renderer);
+                    presenter.set_size(1280, 720).unwrap();
+
+                    continue;
+                }
+                Ok(ok) => ok,
+            };
+
+            device
+                .handle
+                .begin_command_buffer(
+                    command_buffer.handle,
+                    &CommandBufferBeginInfo {
+                        flags: CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+
+            command_buffer.image_barrier(
+                presenter.images[index as usize].handle,
+                AccessFlags::NONE,
+                AccessFlags::NONE,
+                ImageLayout::UNDEFINED,
+                ImageLayout::PRESENT_SRC_KHR,
+                PipelineStageFlags::TOP_OF_PIPE,
+                PipelineStageFlags::BOTTOM_OF_PIPE,
+            );
+
+            device
+                .handle
+                .end_command_buffer(command_buffer.handle)
+                .unwrap();
+
+            queue
+                .submit(
+                    fence.handle,
+                    &[presenter.semaphore.handle],
+                    &[PipelineStageFlags::BOTTOM_OF_PIPE],
+                    &[command_buffer.handle],
+                    &[presenter.present_semaphores[index as usize].handle],
+                )
+                .unwrap();
+
+            presenter.present(index).unwrap();
+
+            fence.wait(u64::MAX).unwrap();
+
+            fence.reset().unwrap();
+
+            command_pool.reset().unwrap();
         }
+    }
+
+    unsafe {
+        sdl3_sys::vulkan::SDL_Vulkan_DestroySurface(
+            instance.handle.handle().as_raw() as *mut _,
+            surface,
+            std::ptr::null(),
+        )
     }
 
     println!("Done");
