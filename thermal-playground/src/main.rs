@@ -2,8 +2,7 @@ use std::ffi::CStr;
 
 use ash::vk::{
     self, AccessFlags, CommandBufferBeginInfo, CommandBufferLevel, CommandBufferUsageFlags,
-    CommandPoolCreateFlags, Handle, ImageLayout, ImageUsageFlags, PipelineStageFlags,
-    PresentModeKHR, SurfaceKHR,
+    CommandPoolCreateFlags, Handle, ImageLayout, ImageUsageFlags, PipelineStageFlags, SurfaceKHR,
 };
 use sdl3_sys::{
     events::{SDL_Event, SDL_EventType},
@@ -77,7 +76,7 @@ fn main() {
         .create_device(
             &[QueueInfo {
                 index: family,
-                priorities: &[0.0],
+                priorities: &[0.],
             }],
             &[c"VK_KHR_swapchain"],
         )
@@ -120,7 +119,13 @@ fn main() {
         .unwrap();
 
         presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
-        presenter.present_mode = PresentModeKHR::MAILBOX;
+
+        presenter.present_mode = physical_device
+            .surface_present_modes(SurfaceKHR::from_raw(surface as u64))
+            .unwrap()
+            .into_iter()
+            .min()
+            .unwrap();
 
         presenter.set_size(1280, 720).unwrap();
 
@@ -182,7 +187,7 @@ fn main() {
                 )
                 .unwrap();
 
-            presenter.present(index).unwrap();
+            _ = presenter.present(index);
 
             fence.wait(u64::MAX).unwrap();
 
