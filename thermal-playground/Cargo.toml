@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 ash = { workspace = true }
-sdl3-sys = "0.6.6"
-thermal = { path = "../thermal" }
+sdl3 = { workspace = true }
+thermal = { path = "../thermal", features = ["sdl3"] }

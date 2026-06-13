@@ -1,39 +1,29 @@
 use std::ffi::CStr;
 
 use ash::vk::{
-    self, AccessFlags, CommandBufferBeginInfo, CommandBufferLevel, CommandBufferUsageFlags,
-    CommandPoolCreateFlags, Handle, ImageLayout, ImageUsageFlags, PipelineStageFlags, SurfaceKHR,
+    self, AccessFlags, CommandBufferLevel, CommandBufferUsageFlags, CommandPoolCreateFlags, Handle,
+    ImageLayout, ImageUsageFlags, PipelineStageFlags,
 };
-use sdl3_sys::{
-    events::{SDL_Event, SDL_EventType},
-    video::{SDL_WINDOW_RESIZABLE, SDL_WINDOW_VULKAN},
-};
+use sdl3::event::Event;
 use thermal::{
     core::presenter::Presenter,
     ext::physical_device::ThPhysicalDeviceIteratorExt,
+    sdl3_util,
     thvk::{device::QueueInfo, library::ThLibrary},
-    util,
 };
 
 fn main() {
     println!("Hello, world!");
 
-    let instance_extensions;
+    sdl3::hint::set(sdl3::hint::names::VIDEO_DRIVER, "wayland,x11,cocoa,windows");
 
-    unsafe {
-        sdl3_sys::hints::SDL_SetHint(
-            sdl3_sys::hints::SDL_HINT_VIDEO_DRIVER,
-            c"wayland,x11,cocoa,windows".as_ptr(),
-        );
+    let sdl = sdl3::init().unwrap();
 
-        sdl3_sys::init::SDL_Init(sdl3_sys::init::SDL_InitFlags::VIDEO);
+    let video = sdl.video().unwrap();
 
-        sdl3_sys::vulkan::SDL_Vulkan_LoadLibrary(std::ptr::null());
+    video.vulkan_load_library_default().unwrap();
 
-        instance_extensions = util::string_array_from_fn(|size| {
-            sdl3_sys::vulkan::SDL_Vulkan_GetInstanceExtensions(size)
-        });
-    }
+    let instance_extensions = sdl3_util::sdl_instance_extensions();
 
     let library = ThLibrary::load().unwrap();
 
@@ -64,7 +54,7 @@ fn main() {
         .unwrap()
         .filter_discrete()
         .find_with_queue_family(|device, family, _| unsafe {
-            sdl3_sys::vulkan::SDL_Vulkan_GetPresentationSupport(
+            sdl3::sys::vulkan::SDL_Vulkan_GetPresentationSupport(
                 device.instance.handle.handle().as_raw() as *mut _,
                 device.handle.as_raw() as *mut _,
                 family,
@@ -94,115 +84,91 @@ fn main() {
         .allocate_command_buffer(CommandBufferLevel::PRIMARY)
         .unwrap();
 
-    let mut surface = std::ptr::null_mut();
-
-    unsafe {
-        let window = sdl3_sys::video::SDL_CreateWindow(
-            c"Thermal".as_ptr(),
-            1280,
-            720,
-            SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN,
-        );
-
-        sdl3_sys::vulkan::SDL_Vulkan_CreateSurface(
-            window,
-            instance.handle.handle().as_raw() as *mut _,
-            std::ptr::null(),
-            &mut surface,
-        );
-
-        let mut presenter = Presenter::new(
-            &physical_device,
-            &queue,
-            SurfaceKHR::from_raw(surface as u64),
-        )
+    let window = video
+        .window("Thermal", 1280, 720)
+        .resizable()
+        .vulkan()
+        .build()
         .unwrap();
 
-        presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
+    let surface = instance.create_sdl3_surface(window.raw()).unwrap();
 
-        presenter.present_mode = physical_device
-            .surface_present_modes(SurfaceKHR::from_raw(surface as u64))
-            .unwrap()
-            .into_iter()
-            .min()
-            .unwrap();
+    let mut presenter = Presenter::new(&physical_device, &queue, surface.clone()).unwrap();
 
-        presenter.set_size(1280, 720).unwrap();
+    presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
 
-        'outer: loop {
-            sdl3_sys::events::SDL_WaitEvent(std::ptr::null_mut());
+    presenter.present_mode = physical_device
+        .surface_present_modes(surface.handle)
+        .unwrap()
+        .into_iter()
+        .min()
+        .unwrap();
 
-            let mut event = SDL_Event::default();
+    presenter.set_size(1280, 720).unwrap();
 
-            while sdl3_sys::events::SDL_PollEvent(&mut event) {
-                if event.event_type() == SDL_EventType::QUIT {
+    let mut event_pump = sdl.event_pump().unwrap();
+
+    'outer: loop {
+        let mut event = event_pump.wait_event();
+
+        loop {
+            match event {
+                Event::Quit { .. } => {
                     break 'outer;
                 }
+                _ => (),
             }
 
-            let (index, _) = match presenter.acquire_next_image(u64::MAX) {
-                Err(result) => {
-                    println!("{}", result);
-
-                    presenter.set_size(1280, 720).unwrap();
-
-                    continue;
-                }
-                Ok(ok) => ok,
+            event = match event_pump.poll_event() {
+                None => break,
+                Some(event) => event,
             };
-
-            device
-                .handle
-                .begin_command_buffer(
-                    command_buffer.handle,
-                    &CommandBufferBeginInfo {
-                        flags: CommandBufferUsageFlags::ONE_TIME_SUBMIT,
-                        ..Default::default()
-                    },
-                )
-                .unwrap();
-
-            command_buffer.image_barrier(
-                presenter.images[index as usize].handle,
-                AccessFlags::NONE,
-                AccessFlags::NONE,
-                ImageLayout::UNDEFINED,
-                ImageLayout::PRESENT_SRC_KHR,
-                PipelineStageFlags::TOP_OF_PIPE,
-                PipelineStageFlags::BOTTOM_OF_PIPE,
-            );
-
-            device
-                .handle
-                .end_command_buffer(command_buffer.handle)
-                .unwrap();
-
-            queue
-                .submit(
-                    fence.handle,
-                    &[presenter.semaphore.handle],
-                    &[PipelineStageFlags::BOTTOM_OF_PIPE],
-                    &[command_buffer.handle],
-                    &[presenter.present_semaphores[index as usize].handle],
-                )
-                .unwrap();
-
-            _ = presenter.present(index);
-
-            fence.wait(u64::MAX).unwrap();
-
-            fence.reset().unwrap();
-
-            command_pool.reset().unwrap();
         }
-    }
 
-    unsafe {
-        sdl3_sys::vulkan::SDL_Vulkan_DestroySurface(
-            instance.handle.handle().as_raw() as *mut _,
-            surface,
-            std::ptr::null(),
-        )
+        let (index, _) = match presenter.acquire_next_image(u64::MAX) {
+            Err(result) => {
+                println!("{}", result);
+
+                presenter.set_size(1280, 720).unwrap();
+
+                continue;
+            }
+            Ok(ok) => ok,
+        };
+
+        command_buffer
+            .begin(CommandBufferUsageFlags::ONE_TIME_SUBMIT)
+            .unwrap();
+
+        command_buffer.image_barrier(
+            presenter.images[index as usize].handle,
+            AccessFlags::NONE,
+            AccessFlags::NONE,
+            ImageLayout::UNDEFINED,
+            ImageLayout::PRESENT_SRC_KHR,
+            PipelineStageFlags::TOP_OF_PIPE,
+            PipelineStageFlags::BOTTOM_OF_PIPE,
+        );
+
+        command_buffer.end().unwrap();
+
+        queue
+            .submit(
+                fence.handle,
+                &[presenter.semaphore.handle],
+                &[PipelineStageFlags::BOTTOM_OF_PIPE],
+                &[command_buffer.handle],
+                &[presenter.present_semaphores[index as usize].handle],
+            )
+            .unwrap();
+
+        _ = presenter.present(index);
+
+        fence.wait(u64::MAX).unwrap();
+
+        fence.reset().unwrap();
+
+        command_pool.reset().unwrap();
     }
 
     println!("Done");

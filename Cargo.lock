@@ -11,10 +11,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitflags"
+version = "2.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+
+[[package]]
+name = "libc"
+version = "0.2.186"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
 name = "libloading"
@@ -33,6 +45,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19f132c84eca552bf34cab8ec81f1c1dcc229b811638f9d283dceabe58c5569e"
 
 [[package]]
+name = "sdl3"
+version = "0.18.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25bd22eb1bbc9137e914022b4994ed35591eea0884e9e3e98e6d9895cad6e1d2"
+dependencies = [
+ "bitflags",
+ "libc",
+ "sdl3-sys",
+]
+
+[[package]]
 name = "sdl3-sys"
 version = "0.6.6+SDL-3.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -47,6 +70,7 @@ name = "thermal"
 version = "0.1.0"
 dependencies = [
  "ash",
+ "sdl3-sys",
 ]
 
 [[package]]
@@ -54,7 +78,7 @@ name = "thermal-playground"
 version = "0.1.0"
 dependencies = [
  "ash",
- "sdl3-sys",
+ "sdl3",
  "thermal",
 ]
 
