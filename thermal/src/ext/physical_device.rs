@@ -18,7 +18,7 @@ pub trait ThPhysicalDeviceIteratorExt: Iterator<Item = ThPhysicalDevice> {
     fn filter_discrete(self) -> impl ThPhysicalDeviceIteratorExt;
 
     fn find_with_queue_family<P: FnMut(&ThPhysicalDevice, u32, QueueFlags) -> bool>(
-        self,
+        &mut self,
         predicate: P,
     ) -> Option<(ThPhysicalDevice, u32)>;
 }
@@ -33,7 +33,7 @@ impl<T: Iterator<Item = ThPhysicalDevice>> ThPhysicalDeviceIteratorExt for T {
     }
 
     fn find_with_queue_family<P: FnMut(&ThPhysicalDevice, u32, QueueFlags) -> bool>(
-        mut self,
+        &mut self,
         mut predicate: P,
     ) -> Option<(ThPhysicalDevice, u32)> {
         self.find_map(|device| {

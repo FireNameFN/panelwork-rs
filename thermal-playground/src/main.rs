@@ -1,13 +1,16 @@
 use std::ffi::CStr;
 
 use ash::vk::{
-    self, AccessFlags, CommandBufferLevel, CommandBufferUsageFlags, CommandPoolCreateFlags, Handle,
+    self, AccessFlags, CommandBufferLevel, CommandBufferUsageFlags, CommandPoolCreateFlags,
     ImageLayout, ImageUsageFlags, PipelineStageFlags,
 };
 use sdl3::event::Event;
 use thermal::{
     core::presenter::Presenter,
-    ext::physical_device::ThPhysicalDeviceIteratorExt,
+    ext::{
+        physical_device::ThPhysicalDeviceIteratorExt,
+        sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
+    },
     sdl3_util,
     thvk::{device::QueueInfo, library::ThLibrary},
 };
@@ -53,13 +56,7 @@ fn main() {
         .physical_devices()
         .unwrap()
         .filter_discrete()
-        .find_with_queue_family(|device, family, _| unsafe {
-            sdl3::sys::vulkan::SDL_Vulkan_GetPresentationSupport(
-                device.instance.handle.handle().as_raw() as *mut _,
-                device.handle.as_raw() as *mut _,
-                family,
-            )
-        })
+        .find_with_sdl_presentation_support()
         .unwrap();
 
     let device = physical_device
