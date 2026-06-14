@@ -1,5 +1,6 @@
 pub mod command_buffer;
 pub mod command_pool;
+pub mod descriptor_pool;
 pub mod descriptor_set_layout;
 pub mod device;
 pub mod device_memory;
@@ -11,12 +12,14 @@ pub mod image_view;
 pub mod instance;
 pub mod library;
 pub mod physical_device;
+pub mod pipeline;
 pub mod pipeline_layout;
 pub mod queue;
 pub mod render_pass;
 pub mod sampler;
 pub mod semaphore;
 pub mod swapchain;
+pub mod shader_module;
 
 #[cfg(feature = "sdl3")]
 pub mod sdl3_surface;
