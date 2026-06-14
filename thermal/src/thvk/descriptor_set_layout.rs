@@ -1,0 +1,47 @@
+use std::sync::Arc;
+
+use ash::{
+    VkResult,
+    vk::{DescriptorSetLayout, DescriptorSetLayoutBinding, DescriptorSetLayoutCreateInfo},
+};
+
+use crate::thvk::device::ThDevice;
+
+pub struct ThDescriptorSetLayout {
+    pub handle: DescriptorSetLayout,
+
+    pub device: Arc<ThDevice>,
+}
+
+impl ThDevice {
+    pub fn create_descriptor_set_layout(
+        self: &Arc<ThDevice>,
+        bindings: &[DescriptorSetLayoutBinding],
+    ) -> VkResult<ThDescriptorSetLayout> {
+        let set_layout_info = DescriptorSetLayoutCreateInfo {
+            binding_count: bindings.len() as u32,
+            p_bindings: bindings.as_ptr(),
+            ..Default::default()
+        };
+
+        let handle = unsafe {
+            self.handle
+                .create_descriptor_set_layout(&set_layout_info, None)
+        }?;
+
+        Ok(ThDescriptorSetLayout {
+            handle: handle,
+            device: self.clone(),
+        })
+    }
+}
+
+impl Drop for ThDescriptorSetLayout {
+    fn drop(&mut self) {
+        unsafe {
+            self.device
+                .handle
+                .destroy_descriptor_set_layout(self.handle, None)
+        }
+    }
+}

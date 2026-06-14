@@ -1,0 +1,11 @@
+[package]
+name = "thermal"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+sdl3 = ["dep:sdl3-sys"]
+
+[dependencies]
+ash = { workspace = true }
+sdl3-sys = { workspace = true, optional = true }
