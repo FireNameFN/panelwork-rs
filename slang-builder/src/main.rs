@@ -5,16 +5,6 @@ use shader_slang::{CompileTarget, SessionDesc};
 use shader_slang::{GlobalSession, TargetDesc};
 
 fn main() {
-    //println!("cargo::error=Test");
-    //println!("cargo::rustc-link-search=/home/fn/Works/Rust/panelwork/slang-builder/deps/slang/lib");
-
-    /*unsafe {
-        env::set_var(
-            "LD_LIBRARY_PATH",
-            "/home/fn/Works/Rust/panelwork/slang-builder/deps/slang/lib",
-        )
-    };*/
-
     let dir = PathBuf::from_iter([env::args().skip(1).next().unwrap().as_str(), "shaders"]);
 
     let bin_dir = dir.join("bin");
@@ -26,10 +16,6 @@ fn main() {
         .map(|file| file.unwrap().path())
         .filter(|file| file.extension().map_or(false, |ext| ext == "spv"))
         .for_each(|file| fs::remove_file(file).unwrap());
-
-    //panic!("{}", &env::var("LD_LIBRARY_PATH").unwrap());
-
-    //return;
 
     let global_session = GlobalSession::new().unwrap();
 

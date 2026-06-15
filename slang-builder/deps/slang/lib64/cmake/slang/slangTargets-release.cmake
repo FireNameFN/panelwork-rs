@@ -9,12 +9,12 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set_property(TARGET slang::slang-glslang APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(slang::slang-glslang PROPERTIES
   IMPORTED_COMMON_LANGUAGE_RUNTIME_RELEASE ""
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libslang-glslang-2026.10.2.so"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libslang-glslang-2026.11.so"
   IMPORTED_NO_SONAME_RELEASE "TRUE"
   )
 
 list(APPEND _cmake_import_check_targets slang::slang-glslang )
-list(APPEND _cmake_import_check_files_for_slang::slang-glslang "${_IMPORT_PREFIX}/lib/libslang-glslang-2026.10.2.so" )
+list(APPEND _cmake_import_check_files_for_slang::slang-glslang "${_IMPORT_PREFIX}/lib/libslang-glslang-2026.11.so" )
 
 # Import target "slang::slangd" for configuration "Release"
 set_property(TARGET slang::slangd APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -38,33 +38,33 @@ list(APPEND _cmake_import_check_files_for_slang::slangi "${_IMPORT_PREFIX}/bin/s
 set_property(TARGET slang::gfx APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(slang::gfx PROPERTIES
   IMPORTED_LINK_DEPENDENT_LIBRARIES_RELEASE "slang::slang"
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libgfx.so.0.2026.10.2"
-  IMPORTED_SONAME_RELEASE "libgfx.so.0.2026.10.2"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libgfx.so.0.2026.11"
+  IMPORTED_SONAME_RELEASE "libgfx.so.0.2026.11"
   )
 
 list(APPEND _cmake_import_check_targets slang::gfx )
-list(APPEND _cmake_import_check_files_for_slang::gfx "${_IMPORT_PREFIX}/lib/libgfx.so.0.2026.10.2" )
+list(APPEND _cmake_import_check_files_for_slang::gfx "${_IMPORT_PREFIX}/lib/libgfx.so.0.2026.11" )
 
 # Import target "slang::slang-glsl-module" for configuration "Release"
 set_property(TARGET slang::slang-glsl-module APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(slang::slang-glsl-module PROPERTIES
   IMPORTED_COMMON_LANGUAGE_RUNTIME_RELEASE ""
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libslang-glsl-module-2026.10.2.so"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libslang-glsl-module-2026.11.so"
   IMPORTED_NO_SONAME_RELEASE "TRUE"
   )
 
 list(APPEND _cmake_import_check_targets slang::slang-glsl-module )
-list(APPEND _cmake_import_check_files_for_slang::slang-glsl-module "${_IMPORT_PREFIX}/lib/libslang-glsl-module-2026.10.2.so" )
+list(APPEND _cmake_import_check_files_for_slang::slang-glsl-module "${_IMPORT_PREFIX}/lib/libslang-glsl-module-2026.11.so" )
 
 # Import target "slang::slang" for configuration "Release"
 set_property(TARGET slang::slang APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(slang::slang PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libslang-compiler.so.0.2026.10.2"
-  IMPORTED_SONAME_RELEASE "libslang-compiler.so.0.2026.10.2"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libslang-compiler.so.0.2026.11"
+  IMPORTED_SONAME_RELEASE "libslang-compiler.so.0.2026.11"
   )
 
 list(APPEND _cmake_import_check_targets slang::slang )
-list(APPEND _cmake_import_check_files_for_slang::slang "${_IMPORT_PREFIX}/lib/libslang-compiler.so.0.2026.10.2" )
+list(APPEND _cmake_import_check_files_for_slang::slang "${_IMPORT_PREFIX}/lib/libslang-compiler.so.0.2026.11" )
 
 # Import target "slang::slangc" for configuration "Release"
 set_property(TARGET slang::slangc APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)

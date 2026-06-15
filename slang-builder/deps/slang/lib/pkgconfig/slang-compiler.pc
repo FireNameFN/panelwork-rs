@@ -5,7 +5,7 @@ includedir=${prefix}/include
 
 Name: slang-compiler
 Description: Slang shading language compiler library
-Version: 2026.10.2
+Version: 2026.11
 Libs: -L${libdir} -lslang-compiler
 Cflags: -I${includedir}
 

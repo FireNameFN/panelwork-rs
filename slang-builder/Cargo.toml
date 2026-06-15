@@ -5,4 +5,3 @@ edition = "2024"
 
 [dependencies]
 shader-slang = { git = "https://github.com/FloatyMonkey/slang-rs" }
-#shader-slang = { git = "https://github.com/ThierryBerger/slang-rs", branch = "static-build", default-features = false, features = ["static"] }
