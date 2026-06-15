@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["thermal", "thermal-playground"]
+members = ["slang-builder", "thermal", "thermal-playground"]
 
 [profile.release]
 lto = true

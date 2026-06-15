@@ -1,0 +1,9 @@
+[env]
+SLANG_DIR = { value = "slang-builder/deps/slang", relative = true }
+#LD_LIBRARY_PATH = { value = "/home/fn/Works/Rust/panelwork/slang-builder/deps/slang/lib", force = true }
+#SLANG_EXTERNAL_DIR = { value = "<slang_source_directory>/build/external", force = true }
+
+[build]
+#rustflags = ["-Crpath"]
+#rustflags = ["--codegen", "-Wl", "--codegen", "-rpath", "/home/fn/Works/Rust/panelwork/slang-builder/deps/slang/lib"]
+#rustflags = ["-L", "/home/fn/Works/Rust/panelwork/slang-builder/deps/slang/lib", "-C", "link-arg=-Wl,-rpath,/home/fn/Works/Rust/panelwork/slang-builder/deps/slang/lib"]
