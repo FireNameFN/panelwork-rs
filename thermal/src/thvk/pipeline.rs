@@ -6,26 +6,28 @@ use ash::{
         self, BlendFactor, BlendOp, ColorComponentFlags, DynamicState, GraphicsPipelineCreateInfo,
         Pipeline, PipelineCache, PipelineColorBlendAttachmentState,
         PipelineColorBlendStateCreateInfo, PipelineDynamicStateCreateInfo,
-        PipelineInputAssemblyStateCreateInfo, PipelineLayout, PipelineMultisampleStateCreateInfo,
+        PipelineInputAssemblyStateCreateInfo, PipelineMultisampleStateCreateInfo,
         PipelineRasterizationStateCreateInfo, PipelineShaderStageCreateInfo,
         PipelineVertexInputStateCreateInfo, PipelineViewportStateCreateInfo, PrimitiveTopology,
-        RenderPass, SampleCountFlags, ShaderModule, ShaderStageFlags,
-        VertexInputAttributeDescription, VertexInputBindingDescription,
+        RenderPass, SampleCountFlags, ShaderStageFlags, VertexInputAttributeDescription,
+        VertexInputBindingDescription,
     },
 };
 
-use crate::thvk::device::ThDevice;
+use crate::thvk::{pipeline_layout::ThPipelineLayout, shader_module::ThShaderModule};
 
 pub struct ThPipeline {
     pub handle: Pipeline,
 
-    pub device: Arc<ThDevice>,
+    pub layout: Arc<ThPipelineLayout>,
+
+    pub shader_modules: [Arc<ThShaderModule>; 2],
 }
 
 pub struct GraphicsPipelineSettings<'a> {
-    pub vertex_shader: ShaderModule,
+    pub vertex_shader: Arc<ThShaderModule>,
 
-    pub fragment_shader: ShaderModule,
+    pub fragment_shader: Arc<ThShaderModule>,
 
     pub vertex_bindings: &'a [VertexInputBindingDescription],
 
@@ -36,23 +38,22 @@ pub struct GraphicsPipelineSettings<'a> {
     pub sample_shading: Option<f32>,
 }
 
-impl ThDevice {
+impl ThPipelineLayout {
     pub fn create_graphics_pipeline(
-        self: &Arc<ThDevice>,
-        pipeline_layout: PipelineLayout,
+        self: &Arc<ThPipelineLayout>,
         render_pass: RenderPass,
         settings: GraphicsPipelineSettings,
     ) -> VkResult<ThPipeline> {
         let stages_info = [
             PipelineShaderStageCreateInfo {
                 stage: ShaderStageFlags::VERTEX,
-                module: settings.vertex_shader,
+                module: settings.vertex_shader.handle,
                 p_name: c"main".as_ptr(),
                 ..Default::default()
             },
             PipelineShaderStageCreateInfo {
                 stage: ShaderStageFlags::FRAGMENT,
-                module: settings.fragment_shader,
+                module: settings.fragment_shader.handle,
                 p_name: c"main".as_ptr(),
                 ..Default::default()
             },
@@ -128,26 +129,35 @@ impl ThDevice {
             p_multisample_state: &multisample_info,
             p_color_blend_state: &blend_info,
             p_dynamic_state: &dynamic_info,
-            layout: pipeline_layout,
+            layout: self.handle,
             render_pass: render_pass,
             ..Default::default()
         };
 
         let handles = unsafe {
-            self.handle
-                .create_graphics_pipelines(PipelineCache::null(), &[pipeline_info], None)
+            self.device.handle.create_graphics_pipelines(
+                PipelineCache::null(),
+                &[pipeline_info],
+                None,
+            )
         }
         .map_err(|e| e.1)?;
 
         Ok(ThPipeline {
             handle: handles[0],
-            device: self.clone(),
+            layout: self.clone(),
+            shader_modules: [settings.vertex_shader, settings.fragment_shader],
         })
     }
 }
 
 impl Drop for ThPipeline {
     fn drop(&mut self) {
-        unsafe { self.device.handle.destroy_pipeline(self.handle, None) }
+        unsafe {
+            self.layout
+                .device
+                .handle
+                .destroy_pipeline(self.handle, None)
+        }
     }
 }

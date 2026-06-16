@@ -26,18 +26,17 @@ pub const VERTEX: SlangShader = SlangShader {
             format: Format::R32G32_SFLOAT,
             offset: 0u32,
         },
-        VertexInputAttributeDescription {
-            location: 1u32,
-            binding: 0u32,
-            format: Format::R32G32B32A32_SFLOAT,
-            offset: 8u32,
-        },
     ],
     bindings: &[
         VertexInputBindingDescription {
             binding: 0u32,
-            stride: 24u32,
+            stride: 8u32,
             input_rate: VertexInputRate::VERTEX,
         },
     ],
+};
+pub const SOLID: SlangShader = SlangShader {
+    code_bytes: include_bytes!("bin/solid.spv"),
+    attributes: &[],
+    bindings: &[],
 };

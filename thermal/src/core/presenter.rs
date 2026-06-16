@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ash::{
     VkResult,
-    vk::{Extent2D, Fence, Format, ImageUsageFlags, PresentInfoKHR, PresentModeKHR, SurfaceKHR},
+    vk::{Extent2D, Fence, Format, ImageUsageFlags, PresentModeKHR, SurfaceKHR},
 };
 
 use crate::thvk::{
@@ -69,21 +69,11 @@ impl Presenter {
     }
 
     pub fn present(&self, index: u32) -> VkResult<bool> {
-        let present_info = PresentInfoKHR {
-            wait_semaphore_count: 1,
-            p_wait_semaphores: &self.present_semaphores[index as usize].handle,
-            swapchain_count: 1,
-            p_swapchains: &self.swapchain.as_ref().unwrap().handle,
-            p_image_indices: &index,
-            ..Default::default()
-        };
-
-        unsafe {
-            self.queue
-                .device
-                .swapchain_device
-                .queue_present(self.queue.handle, &present_info)
-        }
+        self.swapchain.as_ref().unwrap().present(
+            self.queue.handle,
+            &[self.present_semaphores[index as usize].handle],
+            index,
+        )
     }
 
     pub fn set_size(&mut self, width: u32, height: u32) -> VkResult<()> {

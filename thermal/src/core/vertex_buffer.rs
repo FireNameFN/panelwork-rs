@@ -6,7 +6,7 @@ use crate::thvk::{
     device::ThDevice, device_buffer::ThDeviceBuffer, physical_device::ThPhysicalDevice,
 };
 
-pub struct ThVertexBuffer<T> {
+pub struct VertexBuffer<T> {
     pub physical_device: ThPhysicalDevice,
 
     pub device: Arc<ThDevice>,
@@ -20,7 +20,7 @@ pub struct ThVertexBuffer<T> {
     last_capacity: u64,
 }
 
-impl<T: Copy> ThVertexBuffer<T> {
+impl<T: Clone> VertexBuffer<T> {
     pub fn new(physical_device: ThPhysicalDevice, device: Arc<ThDevice>, capacity: u64) -> Self {
         let buffer = Self::create_buffer(&physical_device, &device, capacity);
 
@@ -40,7 +40,7 @@ impl<T: Copy> ThVertexBuffer<T> {
         if size <= self.last_capacity {
             let index = self.vertices.len();
 
-            self.vertices.copy_from_slice(slice);
+            self.vertices.extend_from_slice(slice);
 
             return index as u32;
         }
@@ -51,7 +51,7 @@ impl<T: Copy> ThVertexBuffer<T> {
 
         self.grow(capacity);
 
-        self.vertices.copy_from_slice(slice);
+        self.vertices.extend_from_slice(slice);
 
         0
     }

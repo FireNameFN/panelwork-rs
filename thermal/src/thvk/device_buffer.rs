@@ -29,6 +29,8 @@ impl ThDevice {
         let memory =
             self.allocate_memory_buffer_properties(physical_device, &buffer, properties)?;
 
+        buffer.bind_memory(memory.handle, 0)?;
+
         Ok(ThDeviceBuffer { buffer, memory })
     }
 }

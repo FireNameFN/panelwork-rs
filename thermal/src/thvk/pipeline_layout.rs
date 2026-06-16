@@ -18,7 +18,7 @@ impl ThDevice {
         self: &Arc<ThDevice>,
         set_layouts: &[DescriptorSetLayout],
         push_ranges: &[PushConstantRange],
-    ) -> VkResult<ThPipelineLayout> {
+    ) -> VkResult<Arc<ThPipelineLayout>> {
         let pipeline_layout_info = PipelineLayoutCreateInfo {
             set_layout_count: set_layouts.len() as u32,
             p_set_layouts: set_layouts.as_ptr(),
@@ -32,10 +32,10 @@ impl ThDevice {
                 .create_pipeline_layout(&pipeline_layout_info, None)
         }?;
 
-        Ok(ThPipelineLayout {
+        Ok(Arc::new(ThPipelineLayout {
             handle: handle,
             device: self.clone(),
-        })
+        }))
     }
 }
 

@@ -41,6 +41,8 @@ impl ThDevice {
             MemoryPropertyFlags::DEVICE_LOCAL,
         )?;
 
+        image.bind_memory(memory.handle, 0)?;
+
         Ok(ThDeviceImage { image, memory })
     }
 }

@@ -3,19 +3,20 @@ use std::ffi::CStr;
 use ash::vk::{
     self, AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp,
     ClearColorValue, ClearValue, CommandBufferLevel, CommandBufferUsageFlags,
-    CommandPoolCreateFlags, Format, ImageLayout, ImageUsageFlags, PipelineBindPoint,
-    PipelineStageFlags, Rect2D, SampleCountFlags, SubpassContents, SubpassDescription,
+    CommandPoolCreateFlags, Extent2D, Format, ImageLayout, ImageUsageFlags, Offset2D,
+    PipelineBindPoint, PipelineStageFlags, Rect2D, SampleCountFlags, SubpassContents,
+    SubpassDescription, Viewport,
 };
-use sdl3::event::Event;
+use sdl3::event::{Event, WindowEvent};
 use thermal::{
-    core::presenter::Presenter,
+    core::{presenter::Presenter, vertex_buffer::VertexBuffer},
     defaults,
     ext::{
-        physical_device::ThPhysicalDeviceIteratorExt,
+        physical_device::ThPhysicalDeviceIteratorExt, result::PresentResultExt,
         sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
     },
     sdl3_util,
-    thvk::{device::QueueInfo, library::ThLibrary},
+    thvk::{device::QueueInfo, library::ThLibrary, pipeline::GraphicsPipelineSettings},
 };
 
 fn main() {
@@ -109,6 +110,46 @@ fn main() {
         )
         .unwrap();
 
+    let vertex_shader = device
+        .create_shader_module(thermal::shaders::VERTEX.code())
+        .unwrap();
+
+    let solid_shader = device
+        .create_shader_module(thermal::shaders::SOLID.code())
+        .unwrap();
+
+    let solid_pipeline_layout = device.create_pipeline_layout(&[], &[]).unwrap();
+
+    let solid_pipeline = solid_pipeline_layout
+        .create_graphics_pipeline(
+            render_pass.handle,
+            GraphicsPipelineSettings {
+                vertex_shader: vertex_shader,
+
+                fragment_shader: solid_shader,
+
+                vertex_bindings: thermal::shaders::VERTEX.bindings,
+
+                vertex_attributes: thermal::shaders::VERTEX.attributes,
+
+                samples: SampleCountFlags::TYPE_1,
+
+                sample_shading: Option::None,
+            },
+        )
+        .unwrap();
+
+    let mut vertex_buffer = VertexBuffer::<(f32, f32)>::new(physical_device.clone(), device, 32);
+
+    vertex_buffer.add(&[
+        (-0.5, -0.5),
+        (0.5, -0.5),
+        (-0.5, 0.5),
+        (0.5, -0.5),
+        (-0.5, 0.5),
+        (0.5, 0.5),
+    ]);
+
     let window = video
         .window("Thermal", 1280, 720)
         .resizable()
@@ -156,6 +197,8 @@ fn main() {
 
     let mut event_pump = sdl.event_pump().unwrap();
 
+    let mut resize = false;
+
     'outer: loop {
         let mut event = event_pump.wait_event();
 
@@ -164,6 +207,10 @@ fn main() {
                 Event::Quit { .. } => {
                     break 'outer;
                 }
+                Event::Window { win_event, .. } => match win_event {
+                    WindowEvent::PixelSizeChanged(_, _) => resize = true,
+                    _ => (),
+                },
                 _ => (),
             }
 
@@ -173,44 +220,46 @@ fn main() {
             };
         }
 
-        let (index, _) = match presenter.acquire_next_image(u64::MAX) {
-            Err(result) => {
-                println!("{}", result);
+        if resize {
+            resize = false;
 
-                let (width, height) = window.size_in_pixels();
+            let (width, height) = window.size_in_pixels();
 
-                presenter.set_size(width, height).unwrap();
+            presenter.set_size(width, height).unwrap();
 
-                image_views = presenter
-                    .images
-                    .iter()
-                    .map(|image| {
-                        image
-                            .create_image_view(
-                                Format::B8G8R8A8_SRGB,
-                                defaults::MAPPING_RGBA,
-                                defaults::SUBRESOURCE_COLOR,
-                            )
-                            .unwrap()
-                    })
-                    .collect::<Vec<_>>();
+            image_views = presenter
+                .images
+                .iter()
+                .map(|image| {
+                    image
+                        .create_image_view(
+                            Format::B8G8R8A8_SRGB,
+                            defaults::MAPPING_RGBA,
+                            defaults::SUBRESOURCE_COLOR,
+                        )
+                        .unwrap()
+                })
+                .collect::<Vec<_>>();
 
-                framebuffers = image_views
-                    .iter()
-                    .map(|image_view| {
-                        render_pass
-                            .create_framebuffer(
-                                &[image_view.handle],
-                                presenter.width,
-                                presenter.height,
-                            )
-                            .unwrap()
-                    })
-                    .collect::<Vec<_>>();
+            framebuffers = image_views
+                .iter()
+                .map(|image_view| {
+                    render_pass
+                        .create_framebuffer(&[image_view.handle], presenter.width, presenter.height)
+                        .unwrap()
+                })
+                .collect::<Vec<_>>();
+        }
+
+        let (index, _) = match presenter.acquire_next_image(u64::MAX).unwrap_out_of_date() {
+            None => {
+                println!("out of date");
+
+                resize = true;
 
                 continue;
             }
-            Ok(ok) => ok,
+            Some(ok) => ok,
         };
 
         command_buffer
@@ -223,8 +272,8 @@ fn main() {
             Rect2D {
                 offset: vk::Offset2D { x: 0, y: 0 },
                 extent: vk::Extent2D {
-                    width: 1280,
-                    height: 720,
+                    width: presenter.width,
+                    height: presenter.height,
                 },
             },
             &[ClearValue {
@@ -235,9 +284,37 @@ fn main() {
             SubpassContents::INLINE,
         );
 
+        command_buffer.cmd_set_viewport(Viewport {
+            x: 0.,
+            y: 0.,
+            width: presenter.width as f32,
+            height: presenter.height as f32,
+            ..Default::default()
+        });
+
+        command_buffer.cmd_set_scissor(Rect2D {
+            offset: Offset2D::default(),
+            extent: Extent2D {
+                width: presenter.width,
+                height: presenter.height,
+            },
+        });
+
+        command_buffer.cmd_bind_vertex_buffers(
+            0,
+            &[vertex_buffer.last_buffer.buffer().handle],
+            &[0],
+        );
+
+        command_buffer.cmd_bind_pipeline(solid_pipeline.handle);
+
+        command_buffer.cmd_draw(6, 1, 0, 0);
+
         command_buffer.cmd_end_render_pass();
 
         command_buffer.end().unwrap();
+
+        vertex_buffer.flush();
 
         queue
             .submit(
@@ -249,7 +326,7 @@ fn main() {
             )
             .unwrap();
 
-        _ = presenter.present(index);
+        presenter.present(index).unwrap_out_of_date();
 
         fence.wait(u64::MAX).unwrap();
 

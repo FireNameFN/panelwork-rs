@@ -3,8 +3,9 @@ use std::sync::Arc;
 use ash::{
     VkResult,
     vk::{
-        CompositeAlphaFlagsKHR, Extent2D, Fence, Format, ImageUsageFlags, PresentModeKHR,
-        Semaphore, SurfaceKHR, SurfaceTransformFlagsKHR, SwapchainCreateInfoKHR, SwapchainKHR,
+        CompositeAlphaFlagsKHR, Extent2D, Fence, Format, ImageUsageFlags, PresentInfoKHR,
+        PresentModeKHR, Queue, Semaphore, SurfaceKHR, SurfaceTransformFlagsKHR,
+        SwapchainCreateInfoKHR, SwapchainKHR,
     },
 };
 
@@ -83,6 +84,28 @@ impl ThSwapchain {
             self.device
                 .swapchain_device
                 .acquire_next_image(self.handle, timeout, semaphore, fence)
+        }
+    }
+
+    pub fn present(
+        &self,
+        queue: Queue,
+        wait_semaphores: &[Semaphore],
+        index: u32,
+    ) -> VkResult<bool> {
+        let present_info = PresentInfoKHR {
+            wait_semaphore_count: wait_semaphores.len() as u32,
+            p_wait_semaphores: wait_semaphores.as_ptr(),
+            swapchain_count: 1,
+            p_swapchains: &self.handle,
+            p_image_indices: &index,
+            ..Default::default()
+        };
+
+        unsafe {
+            self.device
+                .swapchain_device
+                .queue_present(queue, &present_info)
         }
     }
 }

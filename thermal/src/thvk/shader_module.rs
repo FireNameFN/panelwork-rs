@@ -14,19 +14,22 @@ pub struct ThShaderModule {
 }
 
 impl ThDevice {
-    pub fn create_shader_module(self: &Arc<ThDevice>, code: &[u32]) -> VkResult<ThShaderModule> {
+    pub fn create_shader_module(
+        self: &Arc<ThDevice>,
+        code: &[u32],
+    ) -> VkResult<Arc<ThShaderModule>> {
         let shader_module_info = ShaderModuleCreateInfo {
-            code_size: code.len(),
+            code_size: code.len() * 4,
             p_code: code.as_ptr(),
             ..Default::default()
         };
 
         let handle = unsafe { self.handle.create_shader_module(&shader_module_info, None) }?;
 
-        Ok(ThShaderModule {
+        Ok(Arc::new(ThShaderModule {
             handle,
             device: self.clone(),
-        })
+        }))
     }
 }
 

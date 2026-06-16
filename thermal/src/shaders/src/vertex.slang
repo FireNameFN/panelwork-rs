@@ -1,6 +1,5 @@
 struct VSInput {
   float2 position;
-  float4 uv;
 }
 
 struct VSOutput {
@@ -11,8 +10,7 @@ struct VSOutput {
 
 [shader("vertex")]
 VSOutput main(VSInput input) {
-  VSOutput output = { float4(1, 1, 1, 1), input.uv.xy,
-                      float4(input.position, 0, 1) };
+  VSOutput output = { float4(1, 1, 1, 1), 0, float4(input.position, 0, 1) };
 
   return output;
 }

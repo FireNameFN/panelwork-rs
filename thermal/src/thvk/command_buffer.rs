@@ -5,8 +5,9 @@ use ash::{
     vk::{
         self, AccessFlags, Buffer, ClearValue, CommandBuffer, CommandBufferBeginInfo,
         CommandBufferUsageFlags, DependencyFlags, Framebuffer, Image, ImageAspectFlags,
-        ImageLayout, ImageMemoryBarrier, ImageSubresourceRange, PipelineStageFlags, Rect2D,
-        RenderPass, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo,
+        ImageLayout, ImageMemoryBarrier, ImageSubresourceRange, Pipeline, PipelineBindPoint,
+        PipelineStageFlags, Rect2D, RenderPass, RenderPassBeginInfo, SubpassBeginInfo,
+        SubpassContents, SubpassEndInfo, Viewport,
     },
 };
 
@@ -70,6 +71,30 @@ impl ThCommandBuffer {
             self.device
                 .handle
                 .cmd_end_render_pass2(self.handle, &SubpassEndInfo::default())
+        }
+    }
+
+    pub fn cmd_set_viewport(&self, viewport: Viewport) {
+        unsafe {
+            self.device
+                .handle
+                .cmd_set_viewport(self.handle, 0, &[viewport])
+        }
+    }
+
+    pub fn cmd_set_scissor(&self, scissor: Rect2D) {
+        unsafe {
+            self.device
+                .handle
+                .cmd_set_scissor(self.handle, 0, &[scissor])
+        }
+    }
+
+    pub fn cmd_bind_pipeline(&self, pipeline: Pipeline) {
+        unsafe {
+            self.device
+                .handle
+                .cmd_bind_pipeline(self.handle, PipelineBindPoint::GRAPHICS, pipeline)
         }
     }
 

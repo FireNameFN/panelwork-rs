@@ -65,9 +65,10 @@ impl ThPhysicalDevice {
         memory_properties
             .memory_types_as_slice()
             .iter()
-            .filter(|memory_type| (1 << memory_type.heap_index & mask) != 0)
-            .filter(|memory_type| memory_type.property_flags.contains(properties))
+            .enumerate()
+            .filter(|(i, _)| (1 << i & mask) != 0)
+            .filter(|(_, memory_type)| memory_type.property_flags.contains(properties))
             .next()
-            .map(|memory_type| memory_type.heap_index)
+            .map(|(i, _)| i as u32)
     }
 }
