@@ -8,4 +8,5 @@ sdl3 = ["dep:sdl3-sys"]
 
 [dependencies]
 ash = { workspace = true }
+bytemuck = "1.25.0"
 sdl3-sys = { workspace = true, optional = true }

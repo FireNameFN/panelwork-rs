@@ -44,12 +44,12 @@ impl ThDevice {
 impl ThDescriptorPool {
     pub fn allocate_descriptor_set(
         &self,
-        set_layout: DescriptorSetLayout,
-    ) -> VkResult<DescriptorSet> {
+        set_layouts: &[DescriptorSetLayout],
+    ) -> VkResult<Vec<DescriptorSet>> {
         let descriptor_set_info = DescriptorSetAllocateInfo {
             descriptor_pool: self.handle,
-            descriptor_set_count: 1,
-            p_set_layouts: &set_layout,
+            descriptor_set_count: set_layouts.len() as u32,
+            p_set_layouts: set_layouts.as_ptr(),
             ..Default::default()
         };
 
@@ -59,7 +59,7 @@ impl ThDescriptorPool {
                 .allocate_descriptor_sets(&descriptor_set_info)
         }?;
 
-        Ok(descriptor_sets[0])
+        Ok(descriptor_sets)
     }
 }
 

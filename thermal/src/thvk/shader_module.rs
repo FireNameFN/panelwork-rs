@@ -16,11 +16,11 @@ pub struct ThShaderModule {
 impl ThDevice {
     pub fn create_shader_module(
         self: &Arc<ThDevice>,
-        code: &[u32],
+        code: &[u8],
     ) -> VkResult<Arc<ThShaderModule>> {
         let shader_module_info = ShaderModuleCreateInfo {
-            code_size: code.len() * 4,
-            p_code: code.as_ptr(),
+            code_size: code.len(),
+            p_code: code.as_ptr() as _,
             ..Default::default()
         };
 

@@ -1,23 +1,31 @@
-use std::ffi::CStr;
+use std::{ffi::CStr, io::Cursor};
 
 use ash::vk::{
     self, AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp,
     ClearColorValue, ClearValue, CommandBufferLevel, CommandBufferUsageFlags,
-    CommandPoolCreateFlags, Extent2D, Format, ImageLayout, ImageUsageFlags, Offset2D,
-    PipelineBindPoint, PipelineStageFlags, Rect2D, SampleCountFlags, SubpassContents,
-    SubpassDescription, Viewport,
+    CommandPoolCreateFlags, DescriptorPoolSize, DescriptorType, Extent2D, Filter, Format,
+    ImageLayout, ImageUsageFlags, Offset2D, PipelineBindPoint, PipelineStageFlags, Rect2D,
+    SampleCountFlags, SamplerAddressMode, SubpassContents, SubpassDescription, Viewport,
 };
+use png::{Decoder, Transformations};
 use sdl3::event::{Event, WindowEvent};
 use thermal::{
-    core::{presenter::Presenter, vertex_buffer::VertexBuffer},
+    core::{command::Command, presenter::Presenter, vertex_buffer::VertexBuffer},
     defaults,
     ext::{
         physical_device::ThPhysicalDeviceIteratorExt, result::PresentResultExt,
         sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
     },
     sdl3_util,
-    thvk::{device::QueueInfo, library::ThLibrary, pipeline::GraphicsPipelineSettings},
+    thvk::{
+        descriptor_set::Binding, device::QueueInfo, library::ThLibrary,
+        pipeline::GraphicsPipelineSettings,
+    },
 };
+
+const IMAGE: &[u8] = include_bytes!("../resources/OverGreen.png");
+
+const IMAGE2: &[u8] = include_bytes!("../resources/dennis.png");
 
 fn main() {
     println!("Hello, world!");
@@ -77,8 +85,8 @@ fn main() {
 
     let fence = device.create_fence().unwrap();
 
-    let command_pool = device
-        .create_command_pool(family, CommandPoolCreateFlags::empty())
+    let command_pool = queue
+        .create_command_pool(CommandPoolCreateFlags::empty())
         .unwrap();
 
     let command_buffer = command_pool
@@ -110,21 +118,45 @@ fn main() {
         )
         .unwrap();
 
-    let vertex_shader = device
-        .create_shader_module(thermal::shaders::VERTEX.code())
+    let descriptor_pool = device
+        .create_descriptor_pool(
+            10,
+            &[DescriptorPoolSize {
+                ty: DescriptorType::COMBINED_IMAGE_SAMPLER,
+                descriptor_count: 10,
+            }],
+        )
         .unwrap();
 
-    let solid_shader = device
-        .create_shader_module(thermal::shaders::SOLID.code())
+    let vertex_shader = thermal::shaders::VERTEX
+        .create_shader_module(device.clone())
         .unwrap();
 
-    let solid_pipeline_layout = device.create_pipeline_layout(&[], &[]).unwrap();
+    let solid_shader = thermal::shaders::SOLID
+        .create_shader_module(device.clone())
+        .unwrap();
+
+    let texture_shader = thermal::shaders::TEXTURE
+        .create_shader_module(device.clone())
+        .unwrap();
+
+    let descriptor_set_layouts = thermal::shaders::TEXTURE
+        .set_layouts
+        .iter()
+        .map(|set| device.create_descriptor_set_layout(set).unwrap())
+        .collect::<Vec<_>>();
+
+    let texture_pipeline_layout = device
+        .create_pipeline_layout(descriptor_set_layouts.clone(), &[])
+        .unwrap();
+
+    let solid_pipeline_layout = device.create_pipeline_layout(vec![], &[]).unwrap();
 
     let solid_pipeline = solid_pipeline_layout
         .create_graphics_pipeline(
             render_pass.handle,
             GraphicsPipelineSettings {
-                vertex_shader: vertex_shader,
+                vertex_shader: vertex_shader.clone(),
 
                 fragment_shader: solid_shader,
 
@@ -138,6 +170,76 @@ fn main() {
             },
         )
         .unwrap();
+
+    let texture_pipeline = texture_pipeline_layout
+        .create_graphics_pipeline(
+            render_pass.handle,
+            GraphicsPipelineSettings {
+                vertex_shader: vertex_shader,
+
+                fragment_shader: texture_shader,
+
+                vertex_bindings: thermal::shaders::VERTEX.bindings,
+
+                vertex_attributes: thermal::shaders::VERTEX.attributes,
+
+                samples: SampleCountFlags::TYPE_1,
+
+                sample_shading: Option::None,
+            },
+        )
+        .unwrap();
+
+    let descriptor_sets = descriptor_pool
+        .allocate_descriptor_set(
+            &descriptor_set_layouts
+                .iter()
+                .map(|set_layout| set_layout.handle)
+                .collect::<Vec<_>>(),
+        )
+        .unwrap();
+
+    let sampler = device
+        .create_sampler(Filter::NEAREST, SamplerAddressMode::CLAMP_TO_BORDER)
+        .unwrap();
+
+    let reader = Cursor::new(IMAGE2);
+
+    let mut decoder = Decoder::new(reader);
+
+    decoder.set_transformations(Transformations::ALPHA);
+
+    let mut reader = decoder.read_info().unwrap();
+
+    let mut buf = vec![0; reader.output_buffer_size().unwrap()];
+
+    let frame = reader.next_frame(&mut buf).unwrap();
+
+    let bytes = &buf[..frame.buffer_size()];
+
+    let command = Command::new(queue.clone()).unwrap();
+
+    let image = command
+        .create_texture(&physical_device, Format::R8G8B8A8_SRGB, 1, bytes, 48, 48, 4)
+        .unwrap();
+
+    let image_view = image
+        .image()
+        .create_image_view(
+            Format::R8G8B8A8_SRGB,
+            defaults::MAPPING_RGBA,
+            defaults::SUBRESOURCE_COLOR,
+        )
+        .unwrap();
+
+    device.update_descriptor_sets(
+        &descriptor_sets,
+        &[&[Binding::CombinedImageSampler(
+            sampler.handle,
+            image_view.handle,
+            ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        )]],
+    );
 
     let mut vertex_buffer = VertexBuffer::<(f32, f32)>::new(physical_device.clone(), device, 32);
 
@@ -159,7 +261,8 @@ fn main() {
 
     let surface = instance.create_sdl3_surface(window.raw()).unwrap();
 
-    let mut presenter = Presenter::new(&physical_device, &queue, surface.clone()).unwrap();
+    let mut presenter =
+        Presenter::new(physical_device.clone(), queue.clone(), surface.clone()).unwrap();
 
     presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
 
@@ -306,7 +409,14 @@ fn main() {
             &[0],
         );
 
-        command_buffer.cmd_bind_pipeline(solid_pipeline.handle);
+        command_buffer.cmd_bind_pipeline(texture_pipeline.handle);
+
+        command_buffer.cmd_bind_descriptor_sets(
+            PipelineBindPoint::GRAPHICS,
+            texture_pipeline_layout.handle,
+            0,
+            &descriptor_sets,
+        );
 
         command_buffer.cmd_draw(6, 1, 0, 0);
 

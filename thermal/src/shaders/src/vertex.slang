@@ -10,7 +10,8 @@ struct VSOutput {
 
 [shader("vertex")]
 VSOutput main(VSInput input) {
-  VSOutput output = { float4(1, 1, 1, 1), 0, float4(input.position, 0, 1) };
+  VSOutput output = { float4(1, 1, 1, 1), input.position,
+                      float4(input.position, 0, 1) };
 
   return output;
 }

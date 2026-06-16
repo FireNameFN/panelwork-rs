@@ -1,7 +1,31 @@
 use std::str::FromStr;
 
 use proc_macro2::TokenStream;
-use quote::ToTokens;
+use quote::{ToTokens, quote};
+
+pub struct VertexBinding {
+    pub binding: u32,
+
+    pub stride: u32,
+
+    pub input_rate: &'static str,
+}
+
+impl ToTokens for VertexBinding {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let binding = self.binding;
+        let stride = self.stride;
+        let input_rate = TokenStream::from_str(self.input_rate).unwrap();
+
+        tokens.extend(quote::quote! {
+            VertexInputBindingDescription {
+                binding: #binding,
+                stride: #stride,
+                input_rate: VertexInputRate::#input_rate,
+            }
+        });
+    }
+}
 
 pub struct VertexAttribute {
     pub location: u32,
@@ -11,14 +35,6 @@ pub struct VertexAttribute {
     pub format: String,
 
     pub offset: u32,
-}
-
-pub struct VertexBinding {
-    pub binding: u32,
-
-    pub stride: u32,
-
-    pub input_rate: &'static str,
 }
 
 impl ToTokens for VertexAttribute {
@@ -33,23 +49,37 @@ impl ToTokens for VertexAttribute {
                 location: #location,
                 binding: #binding,
                 format: Format::#format,
-                offset: #offset
+                offset: #offset,
             }
         });
     }
 }
 
-impl ToTokens for VertexBinding {
+pub struct DescriptorBinding {
+    pub binding: u32,
+
+    pub descriptor_type: &'static str,
+
+    pub descriptor_count: u32,
+
+    pub stage_flags: &'static str,
+}
+
+impl ToTokens for DescriptorBinding {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let binding = self.binding;
-        let stride = self.stride;
-        let input_rate = TokenStream::from_str(self.input_rate).unwrap();
+        let descriptor_type = TokenStream::from_str(self.descriptor_type).unwrap();
+        let descriptor_count = self.descriptor_count;
+        let stage_flags = TokenStream::from_str(self.stage_flags).unwrap();
 
-        tokens.extend(quote::quote! {
-            VertexInputBindingDescription {
+        tokens.extend(quote! {
+            DescriptorSetLayoutBinding {
                 binding: #binding,
-                stride: #stride,
-                input_rate: VertexInputRate::#input_rate,
+                descriptor_type: DescriptorType::#descriptor_type,
+                descriptor_count: #descriptor_count,
+                stage_flags: ShaderStageFlags::#stage_flags,
+                p_immutable_samplers: std::ptr::null(),
+                _marker: PhantomData,
             }
         });
     }

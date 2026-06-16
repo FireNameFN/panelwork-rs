@@ -8,45 +8,43 @@ use ash::{
     },
 };
 
-use crate::thvk::{command_buffer::ThCommandBuffer, device::ThDevice};
+use crate::thvk::{command_buffer::ThCommandBuffer, queue::ThQueue};
 
 pub struct ThCommandPool {
     pub handle: CommandPool,
 
-    pub device: Arc<ThDevice>,
+    pub queue: ThQueue,
 }
 
-impl ThDevice {
+impl ThQueue {
     pub fn create_command_pool(
-        self: &Arc<ThDevice>,
-        family: u32,
+        self: &ThQueue,
         flags: CommandPoolCreateFlags,
-    ) -> VkResult<ThCommandPool> {
+    ) -> VkResult<Arc<ThCommandPool>> {
         let command_pool_info = CommandPoolCreateInfo {
             flags,
-            queue_family_index: family,
+            queue_family_index: self.family,
             ..Default::default()
         };
 
-        let handle = unsafe { self.handle.create_command_pool(&command_pool_info, None) }?;
+        let handle = unsafe {
+            self.device
+                .handle
+                .create_command_pool(&command_pool_info, None)
+        }?;
 
-        Ok(ThCommandPool {
+        Ok(Arc::new(ThCommandPool {
             handle,
-            device: self.clone(),
-        })
+            queue: self.clone(),
+        }))
     }
 }
 
 impl ThCommandPool {
-    pub fn reset(&self) -> VkResult<()> {
-        unsafe {
-            self.device
-                .handle
-                .reset_command_pool(self.handle, CommandPoolResetFlags::empty())
-        }
-    }
-
-    pub fn allocate_command_buffer(&self, level: CommandBufferLevel) -> VkResult<ThCommandBuffer> {
+    pub fn allocate_command_buffer(
+        self: &Arc<ThCommandPool>,
+        level: CommandBufferLevel,
+    ) -> VkResult<ThCommandBuffer> {
         let command_buffer_info = CommandBufferAllocateInfo {
             command_pool: self.handle,
             level,
@@ -55,20 +53,31 @@ impl ThCommandPool {
         };
 
         let handle = unsafe {
-            self.device
+            self.queue
+                .device
                 .handle
                 .allocate_command_buffers(&command_buffer_info)
         }?;
 
         Ok(ThCommandBuffer {
             handle: handle[0],
-            device: self.device.clone(),
+            command_pool: self.clone(),
         })
+    }
+
+    pub fn reset(&self) -> VkResult<()> {
+        unsafe {
+            self.queue
+                .device
+                .handle
+                .reset_command_pool(self.handle, CommandPoolResetFlags::empty())
+        }
     }
 
     pub fn free_command_buffer(&self, command_buffer: CommandBuffer) {
         unsafe {
-            self.device
+            self.queue
+                .device
                 .handle
                 .free_command_buffers(self.handle, &[command_buffer])
         }
@@ -77,6 +86,11 @@ impl ThCommandPool {
 
 impl Drop for ThCommandPool {
     fn drop(&mut self) {
-        unsafe { self.device.handle.destroy_command_pool(self.handle, None) }
+        unsafe {
+            self.queue
+                .device
+                .handle
+                .destroy_command_pool(self.handle, None)
+        }
     }
 }

@@ -38,15 +38,15 @@ pub struct Presenter {
 
 impl Presenter {
     pub fn new(
-        physical_device: &ThPhysicalDevice,
-        queue: &ThQueue,
+        physical_device: ThPhysicalDevice,
+        queue: ThQueue,
         surface: Arc<dyn ThHandle<SurfaceKHR>>,
     ) -> VkResult<Self> {
         let semaphore = queue.device.create_semaphore()?;
 
         Ok(Self {
-            physical_device: physical_device.clone(),
-            queue: queue.clone(),
+            physical_device: physical_device,
+            queue: queue,
             surface,
             semaphore: semaphore,
             images: vec![],

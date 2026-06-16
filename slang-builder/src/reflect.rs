@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use proc_macro2::TokenStream;
+use quote::quote;
 use spirv_cross2::{
     Compiler, Module,
     reflect::{BitWidth, Resource, ResourceType, ScalarKind, ShaderResources, TypeInner},
@@ -8,7 +9,7 @@ use spirv_cross2::{
     targets,
 };
 
-use crate::tokens::{VertexAttribute, VertexBinding};
+use crate::tokens::{DescriptorBinding, VertexAttribute, VertexBinding};
 
 pub fn reflect(code: &[u8], sb: Option<String>, name: &str) -> TokenStream {
     let (_, words, _) = unsafe { code.align_to::<u32>() };
@@ -21,58 +22,45 @@ pub fn reflect(code: &[u8], sb: Option<String>, name: &str) -> TokenStream {
 
     let resources = compiler.shader_resources().unwrap();
 
-    let vertex_input = vertex_input(compiler, resources, sb);
+    let vertex_input = vertex_input(&compiler, &resources, sb);
+
+    let descriptor_sets = get_res1(&compiler, &resources);
 
     let name_upper = TokenStream::from_str(&name.to_ascii_uppercase()).unwrap();
 
     let spv_path = format!("bin/{}.spv", name);
 
-    let attributes = vertex_input.0;
+    let bindings = vertex_input.0;
 
-    let bindings = vertex_input.1;
+    let attributes = vertex_input.1;
+
+    let descriptor_bindings = descriptor_sets
+        .iter()
+        .map(|set| {
+            quote! {
+                &[#(#set),*]
+            }
+        })
+        .collect::<Vec<_>>();
 
     quote::quote! {
         pub const #name_upper: SlangShader = SlangShader {
             code_bytes: include_bytes!(#spv_path),
 
+            bindings: &[#(#bindings),*],
+
             attributes: &[#(#attributes),*],
 
-            bindings: &[#(#bindings),*],
+            set_layouts: &[#(#descriptor_bindings),*],
         };
     }
 }
 
 fn vertex_input(
-    compiler: Compiler<targets::None>,
-    resources: ShaderResources,
+    compiler: &Compiler<targets::None>,
+    resources: &ShaderResources,
     sb: Option<String>,
-) -> (Vec<VertexAttribute>, Vec<VertexBinding>) {
-    let mut sb_iter = sb.as_ref().map(|str| {
-        str.trim_end_matches(|c: char| c.is_whitespace())
-            .split('\n')
-            .map(|line| {
-                let (range_str, rate_str) = line.split_once(' ').unwrap();
-
-                let range = range_str.parse::<i32>().unwrap();
-
-                let rate = match rate_str {
-                    "vertex" => "VERTEX",
-                    "instance" => "INSTANCE",
-                    _ => panic!("expected vertex or instance"),
-                };
-
-                (range, rate)
-            })
-    });
-
-    let mut offset = 0;
-
-    let mut binding = 0;
-
-    let mut binding_offset = 0;
-
-    let mut sb_entry = sb_iter.as_mut().map(|sb| sb.next().unwrap());
-
+) -> (Vec<VertexBinding>, Vec<VertexAttribute>) {
     let mut inputs = resources
         .resources_for_type(ResourceType::StageInput)
         .unwrap()
@@ -91,49 +79,103 @@ fn vertex_input(
 
     inputs.sort_by_key(|input| input.0);
 
-    let mut bindings = vec![];
+    let sb_iter = match sb.as_ref() {
+        None => vec![(inputs.len() as u32, "VERTEX")],
+        Some(str) => str
+            .trim_end_matches(|c: char| c.is_whitespace())
+            .split('\n')
+            .map(|line| {
+                let (range_str, rate_str) = line.split_once(' ').unwrap();
 
-    let attributes = inputs
-        .iter()
-        .map(|input| {
-            let (format, size) = to_format(
-                compiler
-                    .type_description(input.1.base_type_id)
-                    .unwrap()
-                    .inner,
-            );
+                let range = range_str.parse::<u32>().unwrap();
 
-            let attribute = VertexAttribute {
-                location: input.0,
-                binding,
-                format,
-                offset,
-            };
+                let rate = match rate_str {
+                    "vertex" => "VERTEX",
+                    "instance" => "INSTANCE",
+                    _ => panic!("expected vertex or instance"),
+                };
 
-            offset += size;
+                (range, rate)
+            })
+            .collect::<Vec<_>>(),
+    };
 
-            binding_offset += 1;
+    let mut inputs_iter = inputs.iter();
 
-            if sb_entry.is_some() && binding_offset >= sb_entry.unwrap().0 {
-                bindings.push(VertexBinding {
-                    binding: binding,
-                    stride: offset,
-                    input_rate: sb_entry.unwrap().1,
-                });
+    sb_iter.iter().enumerate().fold(
+        (vec![], vec![]),
+        |(mut bindings, mut attributes), (binding, (range, rate))| {
+            let offset =
+                inputs_iter
+                    .by_ref()
+                    .take(*range as usize)
+                    .fold(0, |offset, (location, input)| {
+                        let (format, size) =
+                            to_format(compiler.type_description(input.base_type_id).unwrap().inner);
 
-                sb_entry = sb_iter.as_mut().unwrap().next();
+                        attributes.push(VertexAttribute {
+                            location: *location as u32,
+                            binding: binding as u32,
+                            format,
+                            offset,
+                        });
 
-                binding += 1;
+                        offset + size
+                    });
 
-                binding_offset = 0;
-                offset = 0;
-            }
+            bindings.push(VertexBinding {
+                binding: binding as u32,
+                stride: offset,
+                input_rate: rate,
+            });
 
-            attribute
-        })
-        .collect::<Vec<_>>();
+            (bindings, attributes)
+        },
+    )
+}
 
-    (attributes, bindings)
+fn get_res1(
+    compiler: &Compiler<targets::None>,
+    resources: &ShaderResources,
+) -> Vec<Vec<DescriptorBinding>> {
+    let mut ress = vec![];
+
+    ress.extend(get_resources(
+        compiler,
+        resources,
+        ResourceType::SampledImage,
+    ));
+
+    ress.sort_by_key(|resource| resource.0 << 16 | resource.1);
+
+    let mut result = vec![];
+
+    let mut ress_iter = ress.iter();
+
+    let mut set = 0;
+
+    loop {
+        let bind = ress_iter
+            .by_ref()
+            .take_while(|resource| resource.0 == set)
+            .map(|resource| DescriptorBinding {
+                binding: resource.1,
+                descriptor_type: "COMBINED_IMAGE_SAMPLER",
+                descriptor_count: 1,
+                stage_flags: "FRAGMENT",
+            })
+            .collect::<Vec<_>>();
+
+        if bind.is_empty() {
+            break;
+        }
+
+        result.push(bind);
+
+        set += 1;
+    }
+
+    result
 }
 
 fn get_resources<'a>(

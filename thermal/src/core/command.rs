@@ -1,0 +1,154 @@
+use ash::{
+    VkResult,
+    vk::{
+        AccessFlags, BufferImageCopy, BufferUsageFlags, CommandBufferLevel,
+        CommandBufferUsageFlags, CommandPoolCreateFlags, Extent2D, Extent3D, Format,
+        ImageAspectFlags, ImageLayout, ImageSubresourceLayers, ImageUsageFlags,
+        MemoryPropertyFlags, PipelineStageFlags, SampleCountFlags,
+    },
+};
+
+use crate::thvk::{
+    command_buffer::ThCommandBuffer, device_image::ThDeviceImage, fence::ThFence,
+    physical_device::ThPhysicalDevice, queue::ThQueue,
+};
+
+pub struct Command {
+    pub command_buffer: ThCommandBuffer,
+
+    fence: ThFence,
+}
+
+impl Command {
+    pub fn new(queue: ThQueue) -> VkResult<Self> {
+        let command_pool = queue.create_command_pool(CommandPoolCreateFlags::TRANSIENT)?;
+
+        let command_buffer = command_pool.allocate_command_buffer(CommandBufferLevel::PRIMARY)?;
+
+        let fence = queue.device.create_fence()?;
+
+        Ok(Self {
+            command_buffer,
+            fence,
+        })
+    }
+
+    pub fn execute(&self) -> VkResult<()> {
+        self.command_buffer.command_pool.queue.submit(
+            self.fence.handle,
+            &[],
+            &[],
+            &[self.command_buffer.handle],
+            &[],
+        )?;
+
+        self.fence.wait(u64::MAX)?;
+
+        self.fence.reset()?;
+
+        self.command_buffer.command_pool.reset()?;
+
+        Ok(())
+    }
+
+    pub fn create_texture(
+        &self,
+        physical_device: &ThPhysicalDevice,
+        format: Format,
+        mip_levels: u32,
+        slice: &[u8],
+        width: u32,
+        height: u32,
+        pixel_size: u32,
+    ) -> VkResult<ThDeviceImage> {
+        let image = self
+            .command_buffer
+            .command_pool
+            .queue
+            .device
+            .allocate_image(
+                &physical_device,
+                format,
+                Extent2D { width, height },
+                mip_levels,
+                SampleCountFlags::TYPE_1,
+                ImageUsageFlags::TRANSFER_DST | ImageUsageFlags::SAMPLED,
+            )?;
+
+        let size = width as u64 * height as u64 * pixel_size as u64;
+
+        let buffer = self
+            .command_buffer
+            .command_pool
+            .queue
+            .device
+            .allocate_buffer(
+                &physical_device,
+                size,
+                BufferUsageFlags::TRANSFER_SRC,
+                MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
+            )?;
+
+        buffer.memory().copy_from(slice)?;
+
+        let image_copy = BufferImageCopy {
+            buffer_row_length: width,
+            buffer_image_height: height,
+            image_subresource: ImageSubresourceLayers {
+                aspect_mask: ImageAspectFlags::COLOR,
+                layer_count: 1,
+                ..Default::default()
+            },
+            image_extent: Extent3D {
+                width,
+                height,
+                depth: 1,
+            },
+            ..Default::default()
+        };
+
+        self.command_buffer
+            .begin(CommandBufferUsageFlags::ONE_TIME_SUBMIT)?;
+
+        self.command_buffer.cmd_image_barrier(
+            image.image().handle,
+            AccessFlags::NONE,
+            AccessFlags::TRANSFER_WRITE,
+            ImageLayout::UNDEFINED,
+            ImageLayout::TRANSFER_DST_OPTIMAL,
+            PipelineStageFlags::TOP_OF_PIPE,
+            PipelineStageFlags::TRANSFER,
+        );
+
+        unsafe {
+            self.command_buffer
+                .command_pool
+                .queue
+                .device
+                .handle
+                .cmd_copy_buffer_to_image(
+                    self.command_buffer.handle,
+                    buffer.buffer().handle,
+                    image.image().handle,
+                    ImageLayout::TRANSFER_DST_OPTIMAL,
+                    &[image_copy],
+                )
+        };
+
+        self.command_buffer.cmd_image_barrier(
+            image.image().handle,
+            AccessFlags::TRANSFER_WRITE,
+            AccessFlags::SHADER_READ,
+            ImageLayout::TRANSFER_DST_OPTIMAL,
+            ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            PipelineStageFlags::TRANSFER,
+            PipelineStageFlags::FRAGMENT_SHADER,
+        );
+
+        self.command_buffer.end()?;
+
+        self.execute()?;
+
+        Ok(image)
+    }
+}

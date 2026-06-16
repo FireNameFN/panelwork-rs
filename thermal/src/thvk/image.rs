@@ -37,6 +37,7 @@ impl ThDevice {
                 depth: 1,
             },
             mip_levels,
+            array_layers: 1,
             samples,
             usage,
             initial_layout: layout,
