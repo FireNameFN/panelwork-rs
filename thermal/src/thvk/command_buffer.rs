@@ -3,9 +3,10 @@ use std::sync::Arc;
 use ash::{
     VkResult,
     vk::{
-        self, AccessFlags, CommandBuffer, CommandBufferBeginInfo, CommandBufferUsageFlags,
-        DependencyFlags, Image, ImageAspectFlags, ImageLayout, ImageMemoryBarrier,
-        ImageSubresourceRange, PipelineStageFlags,
+        self, AccessFlags, Buffer, ClearValue, CommandBuffer, CommandBufferBeginInfo,
+        CommandBufferUsageFlags, DependencyFlags, Framebuffer, Image, ImageAspectFlags,
+        ImageLayout, ImageMemoryBarrier, ImageSubresourceRange, PipelineStageFlags, Rect2D,
+        RenderPass, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo,
     },
 };
 
@@ -35,7 +36,70 @@ impl ThCommandBuffer {
         unsafe { self.device.handle.end_command_buffer(self.handle) }
     }
 
-    pub fn image_barrier(
+    pub fn cmd_begin_render_pass(
+        &self,
+        render_pass: RenderPass,
+        framebuffer: Framebuffer,
+        render_area: Rect2D,
+        clear_values: &[ClearValue],
+        contents: SubpassContents,
+    ) {
+        let render_pass_info = RenderPassBeginInfo {
+            render_pass,
+            framebuffer,
+            render_area,
+            clear_value_count: clear_values.len() as u32,
+            p_clear_values: clear_values.as_ptr(),
+            ..Default::default()
+        };
+
+        let subpass_info = SubpassBeginInfo {
+            contents,
+            ..Default::default()
+        };
+
+        unsafe {
+            self.device
+                .handle
+                .cmd_begin_render_pass2(self.handle, &render_pass_info, &subpass_info)
+        }
+    }
+
+    pub fn cmd_end_render_pass(&self) {
+        unsafe {
+            self.device
+                .handle
+                .cmd_end_render_pass2(self.handle, &SubpassEndInfo::default())
+        }
+    }
+
+    pub fn cmd_bind_vertex_buffers(&self, first_binding: u32, buffers: &[Buffer], offsets: &[u64]) {
+        unsafe {
+            self.device
+                .handle
+                .cmd_bind_vertex_buffers(self.handle, first_binding, buffers, offsets)
+        }
+    }
+
+    pub fn cmd_draw(
+        &self,
+        vertex_count: u32,
+        instance_count: u32,
+        first_vertex: u32,
+        first_instance: u32,
+    ) {
+        unsafe {
+            self.device.handle.cmd_draw(
+                self.handle,
+                vertex_count,
+                instance_count,
+                first_vertex,
+                first_instance,
+            )
+        }
+    }
+
+    pub fn cmd_image_barrier(
         &self,
         image: Image,
         src_access: AccessFlags,

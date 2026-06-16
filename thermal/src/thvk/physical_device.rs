@@ -3,8 +3,9 @@ use std::sync::Arc;
 use ash::{
     VkResult,
     vk::{
-        PhysicalDevice, PhysicalDeviceProperties, PresentModeKHR, QueueFamilyProperties,
-        SurfaceCapabilitiesKHR, SurfaceKHR,
+        MemoryPropertyFlags, PhysicalDevice, PhysicalDeviceMemoryProperties,
+        PhysicalDeviceProperties, PresentModeKHR, QueueFamilyProperties, SurfaceCapabilitiesKHR,
+        SurfaceKHR,
     },
 };
 
@@ -23,6 +24,14 @@ impl ThPhysicalDevice {
             self.instance
                 .handle
                 .get_physical_device_properties(self.handle)
+        }
+    }
+
+    pub fn memory_properties(&self) -> PhysicalDeviceMemoryProperties {
+        unsafe {
+            self.instance
+                .handle
+                .get_physical_device_memory_properties(self.handle)
         }
     }
 
@@ -48,5 +57,17 @@ impl ThPhysicalDevice {
                 .surface_instance
                 .get_physical_device_surface_present_modes(self.handle, surface)
         }
+    }
+
+    pub fn find_memory_type(&self, mask: u32, properties: MemoryPropertyFlags) -> Option<u32> {
+        let memory_properties = self.memory_properties();
+
+        memory_properties
+            .memory_types_as_slice()
+            .iter()
+            .filter(|memory_type| (1 << memory_type.heap_index & mask) != 0)
+            .filter(|memory_type| memory_type.property_flags.contains(properties))
+            .next()
+            .map(|memory_type| memory_type.heap_index)
     }
 }

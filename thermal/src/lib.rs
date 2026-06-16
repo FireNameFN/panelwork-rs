@@ -1,4 +1,5 @@
 pub mod core;
+pub mod defaults;
 pub mod ext;
 pub mod thvk;
 pub mod util;

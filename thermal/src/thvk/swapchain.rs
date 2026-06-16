@@ -25,7 +25,7 @@ impl ThDevice {
         extent: Extent2D,
         usage: ImageUsageFlags,
         present_mode: PresentModeKHR,
-        old_swapchain: SwapchainKHR,
+        old_swapchain: Option<SwapchainKHR>,
     ) -> VkResult<ThSwapchain> {
         let swapchain_info = SwapchainCreateInfoKHR {
             surface,
@@ -37,7 +37,7 @@ impl ThDevice {
             pre_transform: SurfaceTransformFlagsKHR::IDENTITY,
             composite_alpha: CompositeAlphaFlagsKHR::OPAQUE,
             present_mode,
-            old_swapchain,
+            old_swapchain: old_swapchain.unwrap_or_default(),
             ..Default::default()
         };
 
@@ -54,7 +54,7 @@ impl ThDevice {
 }
 
 impl ThSwapchain {
-    pub fn images(&self) -> VkResult<Vec<ThImage>> {
+    pub fn images(&self) -> VkResult<Vec<Arc<ThImage>>> {
         let images = unsafe {
             self.device
                 .swapchain_device
@@ -63,10 +63,12 @@ impl ThSwapchain {
 
         Ok(images
             .into_iter()
-            .map(|image| ThImage {
-                handle: image,
-                device: self.device.clone(),
-                drop: false,
+            .map(|image| {
+                Arc::new(ThImage {
+                    handle: image,
+                    device: self.device.clone(),
+                    drop: false,
+                })
             })
             .collect::<Vec<_>>())
     }

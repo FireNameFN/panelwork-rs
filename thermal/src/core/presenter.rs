@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use ash::{
     VkResult,
-    vk::{
-        Extent2D, Fence, Format, ImageUsageFlags, PresentInfoKHR, PresentModeKHR, SurfaceKHR,
-        SwapchainKHR,
-    },
+    vk::{Extent2D, Fence, Format, ImageUsageFlags, PresentInfoKHR, PresentModeKHR, SurfaceKHR},
 };
 
 use crate::thvk::{
@@ -22,13 +19,13 @@ pub struct Presenter {
 
     pub semaphore: ThSemaphore,
 
-    pub images: Vec<ThImage>,
+    pub images: Vec<Arc<ThImage>>,
 
     pub present_semaphores: Vec<ThSemaphore>,
 
-    pub width: i32,
+    pub width: u32,
 
-    pub height: i32,
+    pub height: u32,
 
     pub format: Format,
 
@@ -89,37 +86,32 @@ impl Presenter {
         }
     }
 
-    pub fn set_size(&mut self, width: i32, height: i32) -> VkResult<()> {
+    pub fn set_size(&mut self, width: u32, height: u32) -> VkResult<()> {
         let capabilities = self
             .physical_device
             .surface_capabilities(self.surface.handle())?;
 
         self.width = width.clamp(
-            capabilities.min_image_extent.width as i32,
-            capabilities.max_image_extent.width as i32,
+            capabilities.min_image_extent.width,
+            capabilities.max_image_extent.width,
         );
 
         self.height = height.clamp(
-            capabilities.min_image_extent.height as i32,
-            capabilities.max_image_extent.height as i32,
+            capabilities.min_image_extent.height,
+            capabilities.max_image_extent.height,
         );
-
-        let old_swapchain = match self.swapchain.as_ref() {
-            None => SwapchainKHR::null(),
-            Some(swapchain) => swapchain.handle,
-        };
 
         let swapchain = self.queue.device.create_swapchain(
             self.surface.handle(),
             capabilities.min_image_count,
             self.format,
             Extent2D {
-                width: self.width as u32,
-                height: self.height as u32,
+                width: self.width,
+                height: self.height,
             },
             self.usage,
             self.present_mode,
-            old_swapchain,
+            self.swapchain.as_ref().map(|swapchain| swapchain.handle),
         )?;
 
         self.queue.wait_idle().unwrap();

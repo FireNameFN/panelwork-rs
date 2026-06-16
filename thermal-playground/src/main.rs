@@ -1,12 +1,15 @@
 use std::ffi::CStr;
 
 use ash::vk::{
-    self, AccessFlags, CommandBufferLevel, CommandBufferUsageFlags, CommandPoolCreateFlags,
-    ImageLayout, ImageUsageFlags, PipelineStageFlags,
+    self, AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp,
+    ClearColorValue, ClearValue, CommandBufferLevel, CommandBufferUsageFlags,
+    CommandPoolCreateFlags, Format, ImageLayout, ImageUsageFlags, PipelineBindPoint,
+    PipelineStageFlags, Rect2D, SampleCountFlags, SubpassContents, SubpassDescription,
 };
 use sdl3::event::Event;
 use thermal::{
     core::presenter::Presenter,
+    defaults,
     ext::{
         physical_device::ThPhysicalDeviceIteratorExt,
         sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
@@ -81,6 +84,31 @@ fn main() {
         .allocate_command_buffer(CommandBufferLevel::PRIMARY)
         .unwrap();
 
+    let render_pass = device
+        .create_render_pass(
+            &[AttachmentDescription {
+                format: Format::B8G8R8A8_SRGB,
+                samples: SampleCountFlags::TYPE_1,
+                load_op: AttachmentLoadOp::CLEAR,
+                store_op: AttachmentStoreOp::STORE,
+                stencil_load_op: AttachmentLoadOp::DONT_CARE,
+                stencil_store_op: AttachmentStoreOp::DONT_CARE,
+                initial_layout: ImageLayout::UNDEFINED,
+                final_layout: ImageLayout::PRESENT_SRC_KHR,
+                ..Default::default()
+            }],
+            &[SubpassDescription {
+                pipeline_bind_point: PipelineBindPoint::GRAPHICS,
+                color_attachment_count: 1,
+                p_color_attachments: &AttachmentReference {
+                    attachment: 0,
+                    layout: ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                },
+                ..Default::default()
+            }],
+        )
+        .unwrap();
+
     let window = video
         .window("Thermal", 1280, 720)
         .resizable()
@@ -102,6 +130,29 @@ fn main() {
         .unwrap();
 
     presenter.set_size(1280, 720).unwrap();
+
+    let mut image_views = presenter
+        .images
+        .iter()
+        .map(|image| {
+            image
+                .create_image_view(
+                    Format::B8G8R8A8_SRGB,
+                    defaults::MAPPING_RGBA,
+                    defaults::SUBRESOURCE_COLOR,
+                )
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
+
+    let mut framebuffers = image_views
+        .iter()
+        .map(|image_view| {
+            render_pass
+                .create_framebuffer(&[image_view.handle], 1280, 720)
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
 
     let mut event_pump = sdl.event_pump().unwrap();
 
@@ -126,7 +177,36 @@ fn main() {
             Err(result) => {
                 println!("{}", result);
 
-                presenter.set_size(1280, 720).unwrap();
+                let (width, height) = window.size_in_pixels();
+
+                presenter.set_size(width, height).unwrap();
+
+                image_views = presenter
+                    .images
+                    .iter()
+                    .map(|image| {
+                        image
+                            .create_image_view(
+                                Format::B8G8R8A8_SRGB,
+                                defaults::MAPPING_RGBA,
+                                defaults::SUBRESOURCE_COLOR,
+                            )
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>();
+
+                framebuffers = image_views
+                    .iter()
+                    .map(|image_view| {
+                        render_pass
+                            .create_framebuffer(
+                                &[image_view.handle],
+                                presenter.width,
+                                presenter.height,
+                            )
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>();
 
                 continue;
             }
@@ -137,15 +217,25 @@ fn main() {
             .begin(CommandBufferUsageFlags::ONE_TIME_SUBMIT)
             .unwrap();
 
-        command_buffer.image_barrier(
-            presenter.images[index as usize].handle,
-            AccessFlags::NONE,
-            AccessFlags::NONE,
-            ImageLayout::UNDEFINED,
-            ImageLayout::PRESENT_SRC_KHR,
-            PipelineStageFlags::TOP_OF_PIPE,
-            PipelineStageFlags::BOTTOM_OF_PIPE,
+        command_buffer.cmd_begin_render_pass(
+            render_pass.handle,
+            framebuffers[index as usize].handle,
+            Rect2D {
+                offset: vk::Offset2D { x: 0, y: 0 },
+                extent: vk::Extent2D {
+                    width: 1280,
+                    height: 720,
+                },
+            },
+            &[ClearValue {
+                color: ClearColorValue {
+                    float32: [0., 1., 0., 1.],
+                },
+            }],
+            SubpassContents::INLINE,
         );
+
+        command_buffer.cmd_end_render_pass();
 
         command_buffer.end().unwrap();
 

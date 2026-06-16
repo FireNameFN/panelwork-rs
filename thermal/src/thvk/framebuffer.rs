@@ -17,15 +17,15 @@ impl ThRenderPass {
     pub fn create_framebuffer(
         self: &Arc<ThRenderPass>,
         attachments: &[ImageView],
-        width: i32,
-        height: i32,
+        width: u32,
+        height: u32,
     ) -> VkResult<ThFramebuffer> {
         let framebuffer_info = FramebufferCreateInfo {
             render_pass: self.handle,
             attachment_count: attachments.len() as u32,
             p_attachments: attachments.as_ptr(),
-            width: width as u32,
-            height: height as u32,
+            width: width,
+            height: height,
             layers: 1,
             ..Default::default()
         };

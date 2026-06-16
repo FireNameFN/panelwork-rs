@@ -4,11 +4,13 @@ use ash::{
     VkResult,
     vk::{
         Buffer, DeviceMemory, DeviceSize, Image, MemoryAllocateInfo, MemoryDedicatedAllocateInfo,
-        MemoryMapFlags, TaggedStructure,
+        MemoryMapFlags, MemoryPropertyFlags, TaggedStructure,
     },
 };
 
-use crate::thvk::device::ThDevice;
+use crate::thvk::{
+    buffer::ThBuffer, device::ThDevice, image::ThImage, physical_device::ThPhysicalDevice,
+};
 
 pub struct ThDeviceMemory {
     pub handle: DeviceMemory,
@@ -62,6 +64,21 @@ impl ThDevice {
         })
     }
 
+    pub fn allocate_memory_buffer_properties(
+        self: &Arc<ThDevice>,
+        physical_device: &ThPhysicalDevice,
+        buffer: &ThBuffer,
+        properties: MemoryPropertyFlags,
+    ) -> VkResult<ThDeviceMemory> {
+        let requirements = buffer.memory_requirements();
+
+        let memory_type = physical_device
+            .find_memory_type(requirements.memory_type_bits, properties)
+            .unwrap();
+
+        self.allocate_memory_buffer(requirements.size, memory_type, buffer.handle)
+    }
+
     pub fn allocate_memory_image(
         self: &Arc<ThDevice>,
         size: u64,
@@ -87,24 +104,41 @@ impl ThDevice {
             device: self.clone(),
         })
     }
+
+    pub fn allocate_memory_image_properties(
+        self: &Arc<ThDevice>,
+        physical_device: &ThPhysicalDevice,
+        image: &ThImage,
+        properties: MemoryPropertyFlags,
+    ) -> VkResult<ThDeviceMemory> {
+        let requirements = image.memory_requirements();
+
+        let memory_type = physical_device
+            .find_memory_type(requirements.memory_type_bits, properties)
+            .unwrap();
+
+        self.allocate_memory_image(requirements.size, memory_type, image.handle)
+    }
 }
 
 impl ThDeviceMemory {
-    pub fn copy_from(&self, slice: &[u8]) -> VkResult<()> {
+    pub fn copy_from<T>(&self, slice: &[T]) -> VkResult<()> {
         if slice.is_empty() {
             return Ok(());
         }
+
+        let size = slice.len() * size_of::<T>();
 
         let mapping = unsafe {
             self.device.handle.map_memory(
                 self.handle,
                 0,
-                slice.len() as DeviceSize,
+                size as DeviceSize,
                 MemoryMapFlags::empty(),
             )
         }?;
 
-        unsafe { mapping.copy_from(slice.as_ptr().cast(), slice.len()) };
+        unsafe { mapping.copy_from(slice.as_ptr().cast(), size) };
 
         Ok(())
     }

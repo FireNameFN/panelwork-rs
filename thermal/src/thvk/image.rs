@@ -3,8 +3,8 @@ use std::sync::Arc;
 use ash::{
     VkResult,
     vk::{
-        Extent2D, Extent3D, Format, Image, ImageCreateInfo, ImageLayout, ImageType,
-        ImageUsageFlags, SampleCountFlags,
+        DeviceMemory, Extent2D, Extent3D, Format, Image, ImageCreateInfo, ImageLayout, ImageType,
+        ImageUsageFlags, MemoryRequirements, SampleCountFlags,
     },
 };
 
@@ -50,6 +50,24 @@ impl ThDevice {
             device: self.clone(),
             drop: true,
         }))
+    }
+}
+
+impl ThImage {
+    pub fn memory_requirements(&self) -> MemoryRequirements {
+        unsafe {
+            self.device
+                .handle
+                .get_image_memory_requirements(self.handle)
+        }
+    }
+
+    pub fn bind_memory(&self, memory: DeviceMemory, offset: u64) -> VkResult<()> {
+        unsafe {
+            self.device
+                .handle
+                .bind_image_memory(self.handle, memory, offset)
+        }
     }
 }
 
