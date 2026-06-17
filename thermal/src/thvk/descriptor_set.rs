@@ -28,6 +28,9 @@ impl ThDevice {
 
         for (descriptor_set, bindings) in descriptor_sets.iter().zip(bindings) {
             for (i, binding) in bindings.iter().enumerate() {
+                let descriptor_image_ptr = descriptor_images.as_ptr_range().end;
+                let descriptor_buffer_ptr = descriptor_buffers.as_ptr_range().end;
+
                 let descriptor_type = match *binding {
                     Binding::CombinedImageSampler(sampler, image_view, image_layout) => {
                         descriptor_images.push(DescriptorImageInfo {
@@ -54,12 +57,8 @@ impl ThDevice {
                     dst_binding: i as u32,
                     descriptor_count: 1,
                     descriptor_type: descriptor_type,
-                    p_image_info: descriptor_images
-                        .last()
-                        .map_or_else(|| std::ptr::null(), |ok| ok),
-                    p_buffer_info: descriptor_buffers
-                        .last()
-                        .map_or_else(|| std::ptr::null(), |ok| ok),
+                    p_image_info: descriptor_image_ptr,
+                    p_buffer_info: descriptor_buffer_ptr,
                     ..Default::default()
                 });
             }
