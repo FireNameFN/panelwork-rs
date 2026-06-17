@@ -146,11 +146,11 @@ fn main() {
         .map(|set| device.create_descriptor_set_layout(set).unwrap())
         .collect::<Vec<_>>();
 
+    let solid_pipeline_layout = device.create_pipeline_layout(vec![], &[]).unwrap();
+
     let texture_pipeline_layout = device
         .create_pipeline_layout(descriptor_set_layouts.clone(), &[])
         .unwrap();
-
-    let solid_pipeline_layout = device.create_pipeline_layout(vec![], &[]).unwrap();
 
     let solid_pipeline = solid_pipeline_layout
         .create_graphics_pipeline(
@@ -243,7 +243,7 @@ fn main() {
 
     let mut vertex_buffer = VertexBuffer::<(f32, f32)>::new(physical_device.clone(), device, 32);
 
-    vertex_buffer.add(&[
+    let (buffer, _) = vertex_buffer.add(&[
         (-0.5, -0.5),
         (0.5, -0.5),
         (-0.5, 0.5),
@@ -403,11 +403,7 @@ fn main() {
             },
         });
 
-        command_buffer.cmd_bind_vertex_buffers(
-            0,
-            &[vertex_buffer.last_buffer.buffer().handle],
-            &[0],
-        );
+        command_buffer.cmd_bind_vertex_buffers(0, &[buffer], &[0]);
 
         command_buffer.cmd_bind_pipeline(texture_pipeline.handle);
 

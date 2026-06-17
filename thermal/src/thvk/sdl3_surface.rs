@@ -11,7 +11,7 @@ pub struct ThSdl3Surface {
     pub instance: Arc<ThInstance>,
 }
 
-impl ThHandle<SurfaceKHR> for ThSdl3Surface {
+impl ThHandle<SurfaceKHR> for Arc<ThSdl3Surface> {
     fn handle(&self) -> SurfaceKHR {
         self.handle
     }

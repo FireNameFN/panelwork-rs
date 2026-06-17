@@ -1,21 +1,21 @@
 use std::sync::Arc;
 
-use ash::vk::{BufferUsageFlags, MemoryPropertyFlags};
+use ash::vk::{Buffer, BufferUsageFlags, MemoryPropertyFlags};
 
 use crate::thvk::{
     device::ThDevice, device_buffer::ThDeviceBuffer, physical_device::ThPhysicalDevice,
 };
 
 pub struct VertexBuffer<T> {
-    pub physical_device: ThPhysicalDevice,
+    physical_device: ThPhysicalDevice,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 
     vertices: Vec<T>,
 
     buffers: Vec<ThDeviceBuffer>,
 
-    pub last_buffer: ThDeviceBuffer,
+    last_buffer: ThDeviceBuffer,
 
     last_capacity: u64,
 }
@@ -34,26 +34,22 @@ impl<T: Clone> VertexBuffer<T> {
         }
     }
 
-    pub fn add(&mut self, slice: &[T]) -> u32 {
+    pub fn add(&mut self, slice: &[T]) -> (Buffer, u32) {
         let size = (self.vertices.len() + slice.len()) as u64;
 
-        if size <= self.last_capacity {
-            let index = self.vertices.len();
+        if size > self.last_capacity {
+            self.flush();
 
-            self.vertices.extend_from_slice(slice);
+            let capacity = size.next_power_of_two();
 
-            return index as u32;
+            self.grow(capacity);
         }
 
-        self.flush();
-
-        let capacity = size.next_power_of_two();
-
-        self.grow(capacity);
+        let index = self.vertices.len();
 
         self.vertices.extend_from_slice(slice);
 
-        0
+        (self.last_buffer.buffer().handle, index as u32)
     }
 
     pub fn flush(&mut self) {

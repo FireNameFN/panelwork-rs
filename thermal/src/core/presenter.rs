@@ -10,12 +10,12 @@ use crate::thvk::{
     semaphore::ThSemaphore, swapchain::ThSwapchain,
 };
 
-pub struct Presenter {
+pub struct Presenter<T: ThHandle<SurfaceKHR>> {
     pub physical_device: ThPhysicalDevice,
 
     pub queue: ThQueue,
 
-    pub surface: Arc<dyn ThHandle<SurfaceKHR>>,
+    pub surface: T,
 
     pub semaphore: ThSemaphore,
 
@@ -36,12 +36,8 @@ pub struct Presenter {
     swapchain: Option<ThSwapchain>,
 }
 
-impl Presenter {
-    pub fn new(
-        physical_device: ThPhysicalDevice,
-        queue: ThQueue,
-        surface: Arc<dyn ThHandle<SurfaceKHR>>,
-    ) -> VkResult<Self> {
+impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
+    pub fn new(physical_device: ThPhysicalDevice, queue: ThQueue, surface: T) -> VkResult<Self> {
         let semaphore = queue.device.create_semaphore()?;
 
         Ok(Self {
@@ -120,7 +116,7 @@ impl Presenter {
     }
 }
 
-impl Drop for Presenter {
+impl<T: ThHandle<SurfaceKHR>> Drop for Presenter<T> {
     fn drop(&mut self) {
         self.queue.wait_idle().unwrap();
     }

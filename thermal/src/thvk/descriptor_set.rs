@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
 use ash::vk::{
-    DescriptorImageInfo, DescriptorSet, DescriptorType, ImageLayout, ImageView, Sampler,
-    WriteDescriptorSet,
+    self, Buffer, DescriptorBufferInfo, DescriptorImageInfo, DescriptorSet, DescriptorType,
+    ImageLayout, ImageView, Sampler, WriteDescriptorSet,
 };
 
 use crate::thvk::device::ThDevice;
 
 pub enum Binding {
     CombinedImageSampler(Sampler, ImageView, ImageLayout),
+    StorageBuffer(Buffer),
 }
 
 impl ThDevice {
@@ -19,7 +20,9 @@ impl ThDevice {
     ) {
         let descriptor_count = bindings.iter().map(|bindings| bindings.len()).sum();
 
-        let mut descriptor_images: Vec<DescriptorImageInfo> = Vec::with_capacity(descriptor_count);
+        let mut descriptor_images = Vec::with_capacity(descriptor_count);
+
+        let mut descriptor_buffers = Vec::with_capacity(descriptor_count);
 
         let mut descriptor_writes = Vec::with_capacity(descriptor_count);
 
@@ -35,6 +38,15 @@ impl ThDevice {
 
                         DescriptorType::COMBINED_IMAGE_SAMPLER
                     }
+                    Binding::StorageBuffer(buffer) => {
+                        descriptor_buffers.push(DescriptorBufferInfo {
+                            buffer,
+                            offset: 0,
+                            range: vk::WHOLE_SIZE,
+                        });
+
+                        DescriptorType::STORAGE_BUFFER
+                    }
                 };
 
                 descriptor_writes.push(WriteDescriptorSet {
@@ -42,7 +54,12 @@ impl ThDevice {
                     dst_binding: i as u32,
                     descriptor_count: 1,
                     descriptor_type: descriptor_type,
-                    p_image_info: descriptor_images.last().unwrap(),
+                    p_image_info: descriptor_images
+                        .last()
+                        .map_or_else(|| std::ptr::null(), |ok| ok),
+                    p_buffer_info: descriptor_buffers
+                        .last()
+                        .map_or_else(|| std::ptr::null(), |ok| ok),
                     ..Default::default()
                 });
             }
