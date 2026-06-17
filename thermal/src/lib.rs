@@ -1,10 +1,11 @@
 pub mod core;
 pub mod defaults;
 pub mod ext;
+pub mod shaders;
 pub mod thvk;
 pub mod util;
 
-pub mod shaders;
+pub mod slang;
 
 #[cfg(feature = "sdl3")]
 pub mod sdl3_util;

@@ -17,7 +17,7 @@ impl ToTokens for VertexBinding {
         let stride = self.stride;
         let input_rate = TokenStream::from_str(self.input_rate).unwrap();
 
-        tokens.extend(quote::quote! {
+        tokens.extend(quote! {
             VertexInputBindingDescription {
                 binding: #binding,
                 stride: #stride,
@@ -44,7 +44,7 @@ impl ToTokens for VertexAttribute {
         let format = TokenStream::from_str(&self.format).unwrap();
         let offset = self.offset;
 
-        tokens.extend(quote::quote! {
+        tokens.extend(quote! {
             VertexInputAttributeDescription {
                 location: #location,
                 binding: #binding,

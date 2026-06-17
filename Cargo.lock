@@ -399,12 +399,17 @@ checksum = "703d5c7ef118737c72f1af64ad2f6f8c5e1921f818cdcb97b8fe6fc69bf66214"
 name = "slang-builder"
 version = "0.1.0"
 dependencies = [
- "prettyplease",
  "proc-macro2",
  "quote",
  "shader-slang",
  "spirv-cross2",
- "syn",
+]
+
+[[package]]
+name = "slang-builder-runtime"
+version = "0.1.0"
+dependencies = [
+ "ash",
 ]
 
 [[package]]
@@ -471,6 +476,7 @@ version = "0.1.0"
 dependencies = [
  "ash",
  "sdl3-sys",
+ "slang-builder-runtime",
 ]
 
 [[package]]

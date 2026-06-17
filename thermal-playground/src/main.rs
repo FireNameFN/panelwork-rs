@@ -128,19 +128,19 @@ fn main() {
         )
         .unwrap();
 
-    let vertex_shader = thermal::shaders::VERTEX
-        .create_shader_module(device.clone())
+    let vertex_shader = device
+        .create_compiled_shader(&thermal::slang::VERTEX)
         .unwrap();
 
-    let solid_shader = thermal::shaders::SOLID
-        .create_shader_module(device.clone())
+    let solid_shader = device
+        .create_compiled_shader(&thermal::slang::SOLID)
         .unwrap();
 
-    let texture_shader = thermal::shaders::TEXTURE
-        .create_shader_module(device.clone())
+    let texture_shader = device
+        .create_compiled_shader(&thermal::slang::TEXTURE)
         .unwrap();
 
-    let descriptor_set_layouts = thermal::shaders::TEXTURE
+    let descriptor_set_layouts = thermal::slang::TEXTURE
         .set_layouts
         .iter()
         .map(|set| device.create_descriptor_set_layout(set).unwrap())
@@ -160,9 +160,9 @@ fn main() {
 
                 fragment_shader: solid_shader,
 
-                vertex_bindings: thermal::shaders::VERTEX.bindings,
+                vertex_bindings: thermal::slang::VERTEX.vertex_bindings,
 
-                vertex_attributes: thermal::shaders::VERTEX.attributes,
+                vertex_attributes: thermal::slang::VERTEX.vertex_attributes,
 
                 samples: SampleCountFlags::TYPE_1,
 
@@ -179,9 +179,9 @@ fn main() {
 
                 fragment_shader: texture_shader,
 
-                vertex_bindings: thermal::shaders::VERTEX.bindings,
+                vertex_bindings: thermal::slang::VERTEX.vertex_bindings,
 
-                vertex_attributes: thermal::shaders::VERTEX.attributes,
+                vertex_attributes: thermal::slang::VERTEX.vertex_attributes,
 
                 samples: SampleCountFlags::TYPE_1,
 

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::{env, fs};
 
-use proc_macro2::TokenStream;
+use quote::quote;
 use shader_slang::{CompileTarget, CompilerOptions, SessionDesc};
 use shader_slang::{GlobalSession, TargetDesc};
 
@@ -12,7 +12,7 @@ mod tokens;
 fn main() {
     let crate_dir = PathBuf::from_str(&env::args().skip(1).next().unwrap()).unwrap();
 
-    let dir = crate_dir.join("src").join("shaders");
+    let dir = crate_dir.join("src").join("slang");
 
     let bin_dir = dir.join("bin");
 
@@ -37,49 +37,16 @@ fn main() {
 
     let session = global_session.create_session(&session_desc).unwrap();
 
-    let crate_name =
-        TokenStream::from_str(match crate_dir.file_name().unwrap().to_str().unwrap() {
-            "thermal" => "crate",
-            other => other,
-        })
-        .unwrap();
-
-    let mut mod_code = quote::quote! {
-        use std::marker::PhantomData;
-        use std::sync::Arc;
-
-        use ash::VkResult;
-        use ash::vk::Format;
+    let mut mod_code = quote! {
         use ash::vk::DescriptorSetLayoutBinding;
         use ash::vk::DescriptorType;
+        use ash::vk::Format;
         use ash::vk::ShaderStageFlags;
         use ash::vk::VertexInputAttributeDescription;
         use ash::vk::VertexInputBindingDescription;
         use ash::vk::VertexInputRate;
-        use #crate_name::thvk::device::ThDevice;
-        use #crate_name::thvk::shader_module::ThShaderModule;
-
-        pub struct SlangShader {
-            pub code_bytes: &'static [u8],
-
-            pub bindings: &'static [VertexInputBindingDescription],
-
-            pub attributes: &'static [VertexInputAttributeDescription],
-
-            pub set_layouts: &'static [&'static [DescriptorSetLayoutBinding<'static>]],
-        }
-
-        impl SlangShader {
-            pub fn code(&self) -> &'static [u32] {
-                unsafe {
-                    std::slice::from_raw_parts(self.code_bytes.as_ptr() as _, self.code_bytes.len() / 4)
-                }
-            }
-
-            pub fn create_shader_module(&self, device: Arc<ThDevice>) -> VkResult<Arc<ThShaderModule>> {
-                device.create_shader_module(self.code_bytes)
-            }
-        }
+        use slang_builder_runtime::CompiledShader;
+        use std::marker::PhantomData;
     };
 
     _ = fs::create_dir(&bin_dir);
@@ -123,7 +90,5 @@ fn main() {
         .iter()
         .for_each(|file| fs::remove_file(file).unwrap());
 
-    let syntax = syn::parse_file(&mod_code.to_string()).unwrap();
-
-    fs::write(dir.join("mod.rs"), prettyplease::unparse(&syntax)).unwrap();
+    fs::write(dir.join("mod.rs"), mod_code.to_string()).unwrap();
 }

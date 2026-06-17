@@ -43,13 +43,13 @@ pub fn reflect(code: &[u8], sb: Option<String>, name: &str) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    quote::quote! {
-        pub const #name_upper: SlangShader = SlangShader {
-            code_bytes: include_bytes!(#spv_path),
+    quote! {
+        pub const #name_upper: CompiledShader = CompiledShader {
+            code: include_bytes!(#spv_path),
 
-            bindings: &[#(#bindings),*],
+            vertex_bindings: &[#(#bindings),*],
 
-            attributes: &[#(#attributes),*],
+            vertex_attributes: &[#(#attributes),*],
 
             set_layouts: &[#(#descriptor_bindings),*],
         };
