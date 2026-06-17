@@ -2,12 +2,15 @@ use std::sync::Arc;
 
 use ash::{
     VkResult,
-    vk::{Extent2D, Fence, Format, ImageUsageFlags, PresentModeKHR, SurfaceKHR},
+    vk::{Fence, Format, ImageUsageFlags, PresentModeKHR, SurfaceKHR},
 };
 
-use crate::thvk::{
-    handle::ThHandle, image::ThImage, physical_device::ThPhysicalDevice, queue::ThQueue,
-    semaphore::ThSemaphore, swapchain::ThSwapchain,
+use crate::{
+    primitives,
+    thvk::{
+        handle::ThHandle, image::ThImage, physical_device::ThPhysicalDevice, queue::ThQueue,
+        semaphore::ThSemaphore, swapchain::ThSwapchain,
+    },
 };
 
 pub struct Presenter<T: ThHandle<SurfaceKHR>> {
@@ -91,10 +94,7 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
             self.surface.handle(),
             capabilities.min_image_count,
             self.format,
-            Extent2D {
-                width: self.width,
-                height: self.height,
-            },
+            primitives::extent(self.width, self.height),
             self.usage,
             self.present_mode,
             self.swapchain.as_ref().map(|swapchain| swapchain.handle),

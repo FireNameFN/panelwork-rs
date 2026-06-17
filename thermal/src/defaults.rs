@@ -1,4 +1,7 @@
-use ash::vk::{self, ComponentMapping, ComponentSwizzle, ImageAspectFlags, ImageSubresourceRange};
+use ash::vk::{
+    self, ComponentMapping, ComponentSwizzle, ImageAspectFlags, ImageSubresourceLayers,
+    ImageSubresourceRange,
+};
 
 pub const MAPPING_RGBA: ComponentMapping = ComponentMapping {
     r: ComponentSwizzle::R,
@@ -13,4 +16,11 @@ pub const SUBRESOURCE_COLOR: ImageSubresourceRange = ImageSubresourceRange {
     level_count: vk::REMAINING_MIP_LEVELS,
     base_array_layer: 0,
     layer_count: vk::REMAINING_ARRAY_LAYERS,
+};
+
+pub const SUBRESOURCE_COLOR_LAYER: ImageSubresourceLayers = ImageSubresourceLayers {
+    aspect_mask: ImageAspectFlags::COLOR,
+    mip_level: 0,
+    base_array_layer: 0,
+    layer_count: 1,
 };

@@ -1,6 +1,7 @@
 pub mod core;
 pub mod defaults;
 pub mod ext;
+pub mod primitives;
 pub mod shaders;
 pub mod thvk;
 pub mod util;

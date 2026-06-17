@@ -3,9 +3,9 @@ use std::{ffi::CStr, io::Cursor};
 use ash::vk::{
     self, AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp,
     ClearColorValue, ClearValue, CommandBufferLevel, CommandBufferUsageFlags,
-    CommandPoolCreateFlags, DescriptorPoolSize, DescriptorType, Extent2D, Filter, Format,
-    ImageLayout, ImageUsageFlags, Offset2D, PipelineBindPoint, PipelineStageFlags, Rect2D,
-    SampleCountFlags, SamplerAddressMode, SubpassContents, SubpassDescription, Viewport,
+    CommandPoolCreateFlags, DescriptorPoolSize, DescriptorType, Filter, Format, ImageLayout,
+    ImageUsageFlags, PipelineBindPoint, PipelineStageFlags, SampleCountFlags, SamplerAddressMode,
+    SubpassContents, SubpassDescription,
 };
 use png::{Decoder, Transformations};
 use sdl3::event::{Event, WindowEvent};
@@ -16,7 +16,7 @@ use thermal::{
         physical_device::ThPhysicalDeviceIteratorExt, result::PresentResultExt,
         sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
     },
-    sdl3_util,
+    primitives, sdl3_util,
     thvk::{
         descriptor_set::Binding, device::QueueInfo, library::ThLibrary,
         pipeline::GraphicsPipelineSettings,
@@ -67,7 +67,8 @@ fn main() {
     let (physical_device, family) = instance
         .physical_devices()
         .unwrap()
-        .filter_discrete()
+        .sort_by_type()
+        .into_iter()
         .find_with_sdl_presentation_support()
         .unwrap();
 
@@ -372,13 +373,7 @@ fn main() {
         command_buffer.cmd_begin_render_pass(
             render_pass.handle,
             framebuffers[index as usize].handle,
-            Rect2D {
-                offset: vk::Offset2D { x: 0, y: 0 },
-                extent: vk::Extent2D {
-                    width: presenter.width,
-                    height: presenter.height,
-                },
-            },
+            primitives::rect(0, 0, presenter.width, presenter.height),
             &[ClearValue {
                 color: ClearColorValue {
                     float32: [0., 1., 0., 1.],
@@ -387,21 +382,14 @@ fn main() {
             SubpassContents::INLINE,
         );
 
-        command_buffer.cmd_set_viewport(Viewport {
-            x: 0.,
-            y: 0.,
-            width: presenter.width as f32,
-            height: presenter.height as f32,
-            ..Default::default()
-        });
+        command_buffer.cmd_set_viewport(primitives::viewport(
+            0.,
+            0.,
+            presenter.width as f32,
+            presenter.height as f32,
+        ));
 
-        command_buffer.cmd_set_scissor(Rect2D {
-            offset: Offset2D::default(),
-            extent: Extent2D {
-                width: presenter.width,
-                height: presenter.height,
-            },
-        });
+        command_buffer.cmd_set_scissor(primitives::rect(0, 0, presenter.width, presenter.height));
 
         command_buffer.cmd_bind_vertex_buffers(0, &[buffer], &[0]);
 

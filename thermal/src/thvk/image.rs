@@ -3,12 +3,12 @@ use std::sync::Arc;
 use ash::{
     VkResult,
     vk::{
-        DeviceMemory, Extent2D, Extent3D, Format, Image, ImageCreateInfo, ImageLayout, ImageType,
+        DeviceMemory, Extent2D, Format, Image, ImageCreateInfo, ImageLayout, ImageType,
         ImageUsageFlags, MemoryRequirements, SampleCountFlags,
     },
 };
 
-use crate::thvk::device::ThDevice;
+use crate::{primitives, thvk::device::ThDevice};
 
 pub struct ThImage {
     pub handle: Image,
@@ -31,11 +31,7 @@ impl ThDevice {
         let image_info = ImageCreateInfo {
             image_type: ImageType::TYPE_2D,
             format,
-            extent: Extent3D {
-                width: extent.width,
-                height: extent.height,
-                depth: 1,
-            },
+            extent: primitives::extent3d(extent.width, extent.height, 1),
             mip_levels,
             array_layers: 1,
             samples,

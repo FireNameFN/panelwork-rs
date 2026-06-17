@@ -15,7 +15,7 @@ impl ThPhysicalDevice {
 }
 
 pub trait ThPhysicalDeviceIteratorExt: Iterator<Item = ThPhysicalDevice> {
-    fn filter_discrete(self) -> impl ThPhysicalDeviceIteratorExt;
+    fn sort_by_type(self) -> Vec<ThPhysicalDevice>;
 
     fn find_with_queue_family<P: FnMut(&ThPhysicalDevice, u32, QueueFlags) -> bool>(
         &mut self,
@@ -24,12 +24,19 @@ pub trait ThPhysicalDeviceIteratorExt: Iterator<Item = ThPhysicalDevice> {
 }
 
 impl<T: Iterator<Item = ThPhysicalDevice>> ThPhysicalDeviceIteratorExt for T {
-    fn filter_discrete(self) -> impl ThPhysicalDeviceIteratorExt {
-        self.filter(|device| {
-            let properties = device.properties();
+    fn sort_by_type(self) -> Vec<ThPhysicalDevice> {
+        let mut devices = self.collect::<Vec<_>>();
 
-            properties.device_type == PhysicalDeviceType::DISCRETE_GPU
-        })
+        devices.sort_by_cached_key(|device| match device.properties().device_type {
+            PhysicalDeviceType::DISCRETE_GPU => 4,
+            PhysicalDeviceType::INTEGRATED_GPU => 3,
+            PhysicalDeviceType::VIRTUAL_GPU => 2,
+            PhysicalDeviceType::CPU => 1,
+            PhysicalDeviceType::OTHER => 0,
+            _ => panic!("unknown device type"),
+        });
+
+        devices
     }
 
     fn find_with_queue_family<P: FnMut(&ThPhysicalDevice, u32, QueueFlags) -> bool>(

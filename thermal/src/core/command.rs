@@ -2,15 +2,17 @@ use ash::{
     VkResult,
     vk::{
         AccessFlags, BufferImageCopy, BufferUsageFlags, CommandBufferLevel,
-        CommandBufferUsageFlags, CommandPoolCreateFlags, Extent2D, Extent3D, Format,
-        ImageAspectFlags, ImageLayout, ImageSubresourceLayers, ImageUsageFlags,
+        CommandBufferUsageFlags, CommandPoolCreateFlags, Format, ImageLayout, ImageUsageFlags,
         MemoryPropertyFlags, PipelineStageFlags, SampleCountFlags,
     },
 };
 
-use crate::thvk::{
-    command_buffer::ThCommandBuffer, device_image::ThDeviceImage, fence::ThFence,
-    physical_device::ThPhysicalDevice, queue::ThQueue,
+use crate::{
+    defaults, primitives,
+    thvk::{
+        command_buffer::ThCommandBuffer, device_image::ThDeviceImage, fence::ThFence,
+        physical_device::ThPhysicalDevice, queue::ThQueue,
+    },
 };
 
 pub struct Command {
@@ -69,7 +71,7 @@ impl Command {
             .allocate_image(
                 &physical_device,
                 format,
-                Extent2D { width, height },
+                primitives::extent(width, height),
                 mip_levels,
                 SampleCountFlags::TYPE_1,
                 ImageUsageFlags::TRANSFER_DST | ImageUsageFlags::SAMPLED,
@@ -94,16 +96,8 @@ impl Command {
         let image_copy = BufferImageCopy {
             buffer_row_length: width,
             buffer_image_height: height,
-            image_subresource: ImageSubresourceLayers {
-                aspect_mask: ImageAspectFlags::COLOR,
-                layer_count: 1,
-                ..Default::default()
-            },
-            image_extent: Extent3D {
-                width,
-                height,
-                depth: 1,
-            },
+            image_subresource: defaults::SUBRESOURCE_COLOR_LAYER,
+            image_extent: primitives::extent3d(width, height, 1),
             ..Default::default()
         };
 
