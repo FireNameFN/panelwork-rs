@@ -17,21 +17,21 @@ use crate::{
 };
 
 pub struct Presenter<T: ThHandle<SurfaceKHR>> {
-    pub physical_device: ThPhysicalDevice,
+    physical_device: ThPhysicalDevice,
 
-    pub queue: ThQueue,
+    queue: ThQueue,
 
-    pub surface: T,
+    surface: T,
 
-    pub semaphore: ThSemaphore,
+    semaphore: ThSemaphore,
 
-    pub images: Vec<ThSwapchainImage>,
+    images: Vec<ThSwapchainImage>,
 
-    pub present_semaphores: Vec<ThSemaphore>,
+    present_semaphores: Vec<ThSemaphore>,
 
-    pub width: u32,
+    width: u32,
 
-    pub height: u32,
+    height: u32,
 
     pub format: Format,
 
@@ -60,6 +60,38 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
             present_mode: PresentModeKHR::IMMEDIATE,
             swapchain: None,
         })
+    }
+
+    pub fn physical_device(&self) -> &ThPhysicalDevice {
+        &self.physical_device
+    }
+
+    pub fn queue(&self) -> &ThQueue {
+        &self.queue
+    }
+
+    pub fn surface(&self) -> &T {
+        &self.surface
+    }
+
+    pub fn semaphore(&self) -> &ThSemaphore {
+        &self.semaphore
+    }
+
+    pub fn images(&self) -> &Vec<ThSwapchainImage> {
+        &self.images
+    }
+
+    pub fn present_semaphores(&self) -> &Vec<ThSemaphore> {
+        &self.present_semaphores
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
     }
 
     pub fn acquire_next_image(&self, timeout: u64) -> VkResult<(u32, bool)> {

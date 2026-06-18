@@ -1,17 +1,20 @@
-use std::str::FromStr;
+use std::{str::FromStr, sync::LazyLock};
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use regex::Regex;
 use spirv_cross2::{
     Compiler, Module,
-    reflect::{BitWidth, Resource, ResourceType, ScalarKind, ShaderResources, TypeInner},
-    spirv::Decoration,
+    reflect::{BitWidth, ResourceType, ScalarKind, ShaderResources, TypeInner},
+    spirv::{Decoration, ExecutionModel},
     targets,
 };
 
 use crate::tokens::{DescriptorBinding, VertexAttribute, VertexBinding};
 
-pub fn reflect(code: &[u8], sb: Option<String>, name: &str) -> TokenStream {
+const REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new("// sb/(vertex|instance)").unwrap());
+
+pub fn reflect(code: &[u8], content: String, name: &str) -> TokenStream {
     let (_, words, _) = unsafe { code.align_to::<u32>() };
 
     unsafe { std::mem::transmute::<&[u8], &[u32]>(code) };
@@ -20,11 +23,16 @@ pub fn reflect(code: &[u8], sb: Option<String>, name: &str) -> TokenStream {
 
     let compiler = Compiler::<targets::None>::new(cross_module).unwrap();
 
+    let model = compiler.execution_model().unwrap();
+
     let resources = compiler.shader_resources().unwrap();
 
-    let vertex_input = vertex_input(&compiler, &resources, sb);
+    let vertex_input = match model {
+        ExecutionModel::Vertex => vertex_input(&compiler, &resources, content),
+        _ => (vec![], vec![]),
+    };
 
-    let descriptor_sets = get_res1(&compiler, &resources);
+    let descriptor_sets = get_descriptors(&compiler, &resources);
 
     let name_upper = TokenStream::from_str(&name.to_ascii_uppercase()).unwrap();
 
@@ -59,8 +67,15 @@ pub fn reflect(code: &[u8], sb: Option<String>, name: &str) -> TokenStream {
 fn vertex_input(
     compiler: &Compiler<targets::None>,
     resources: &ShaderResources,
-    sb: Option<String>,
+    content: String,
 ) -> (Vec<VertexBinding>, Vec<VertexAttribute>) {
+    #[derive(Clone, PartialEq)]
+    enum Rate {
+        Invalid,
+        Vertex,
+        Instance,
+    }
+
     let mut inputs = resources
         .resources_for_type(ResourceType::StageInput)
         .unwrap()
@@ -79,62 +94,67 @@ fn vertex_input(
 
     inputs.sort_by_key(|input| input.0);
 
-    let sb_iter = match sb.as_ref() {
-        None => vec![(inputs.len() as u32, "VERTEX")],
-        Some(str) => str
-            .trim_end_matches(|c: char| c.is_whitespace())
-            .split('\n')
-            .map(|line| {
-                let (range_str, rate_str) = line.split_once(' ').unwrap();
+    let captures = REGEX.captures_iter(&content).collect::<Vec<_>>();
 
-                let range = range_str.parse::<u32>().unwrap();
-
-                let rate = match rate_str {
-                    "vertex" => "VERTEX",
-                    "instance" => "INSTANCE",
-                    _ => panic!("expected vertex or instance"),
-                };
-
-                (range, rate)
+    let sb_iter = if captures.len() == inputs.len() {
+        captures
+            .iter()
+            .map(|capture| match capture.get(1).unwrap().as_str() {
+                "vertex" => Rate::Vertex,
+                "instance" => Rate::Instance,
+                _ => unreachable!(),
             })
-            .collect::<Vec<_>>(),
+            .collect()
+    } else if captures.len() == 0 {
+        vec![Rate::Vertex; inputs.len()]
+    } else {
+        panic!("wrong count of sb")
     };
 
-    let mut inputs_iter = inputs.iter();
+    let mut bindings = Vec::with_capacity(inputs.len());
 
-    sb_iter.iter().enumerate().fold(
-        (vec![], vec![]),
-        |(mut bindings, mut attributes), (binding, (range, rate))| {
-            let offset =
-                inputs_iter
-                    .by_ref()
-                    .take(*range as usize)
-                    .fold(0, |offset, (location, input)| {
-                        let (format, size) =
-                            to_format(compiler.type_description(input.base_type_id).unwrap().inner);
+    let mut attributes = Vec::with_capacity(inputs.len());
 
-                        attributes.push(VertexAttribute {
-                            location: *location as u32,
-                            binding: binding as u32,
-                            format,
-                            offset,
-                        });
+    let mut cur_rate = Rate::Invalid;
 
-                        offset + size
-                    });
+    let mut binding = 0;
+
+    for ((location, input), rate) in inputs.iter().zip(sb_iter) {
+        if cur_rate != rate {
+            binding = bindings.len() as u32;
 
             bindings.push(VertexBinding {
-                binding: binding as u32,
-                stride: offset,
-                input_rate: rate,
+                binding: binding,
+                stride: 0,
+                input_rate: match rate {
+                    Rate::Vertex => "VERTEX",
+                    Rate::Instance => "INSTANCE",
+                    _ => unreachable!(),
+                },
             });
 
-            (bindings, attributes)
-        },
-    )
+            cur_rate = rate;
+        }
+
+        let (format, size) =
+            to_format(compiler.type_description(input.base_type_id).unwrap().inner);
+
+        let stride = &mut bindings.last_mut().unwrap().stride;
+
+        attributes.push(VertexAttribute {
+            location: *location,
+            binding,
+            format,
+            offset: *stride,
+        });
+
+        *stride += size;
+    }
+
+    (bindings, attributes)
 }
 
-fn get_res1(
+fn get_descriptors(
     compiler: &Compiler<targets::None>,
     resources: &ShaderResources,
 ) -> Vec<Vec<DescriptorBinding>> {
@@ -144,9 +164,10 @@ fn get_res1(
         compiler,
         resources,
         ResourceType::SampledImage,
+        "COMBINED_IMAGE_SAMPLER",
     ));
 
-    ress.sort_by_key(|resource| resource.0 << 16 | resource.1);
+    ress.sort_by_key(|descriptor| descriptor.set << 16 | descriptor.binding);
 
     let mut result = vec![];
 
@@ -157,10 +178,10 @@ fn get_res1(
     loop {
         let bind = ress_iter
             .by_ref()
-            .take_while(|resource| resource.0 == set)
-            .map(|resource| DescriptorBinding {
-                binding: resource.1,
-                descriptor_type: "COMBINED_IMAGE_SAMPLER",
+            .take_while(|descriptor| descriptor.set == set)
+            .map(|descriptor| DescriptorBinding {
+                binding: descriptor.binding,
+                descriptor_type: descriptor.descriptor_type,
                 descriptor_count: 1,
                 stage_flags: "FRAGMENT",
             })
@@ -178,30 +199,35 @@ fn get_res1(
     result
 }
 
+struct DescriptorResource {
+    set: u32,
+    binding: u32,
+    descriptor_type: &'static str,
+}
+
 fn get_resources<'a>(
     compiler: &Compiler<targets::None>,
     resources: &ShaderResources,
     resource_type: ResourceType,
-) -> impl Iterator<Item = (u32, u32, Resource<'a>)> {
+    descriptor_type: &'static str,
+) -> impl Iterator<Item = DescriptorResource> {
     resources
         .resources_for_type(resource_type)
         .unwrap()
-        .map(|resource| {
-            (
-                compiler
-                    .decoration(resource.id, Decoration::DescriptorSet)
-                    .unwrap()
-                    .unwrap()
-                    .as_literal()
-                    .unwrap(),
-                compiler
-                    .decoration(resource.id, Decoration::Binding)
-                    .unwrap()
-                    .unwrap()
-                    .as_literal()
-                    .unwrap(),
-                resource,
-            )
+        .map(move |resource| DescriptorResource {
+            set: compiler
+                .decoration(resource.id, Decoration::DescriptorSet)
+                .unwrap()
+                .unwrap()
+                .as_literal()
+                .unwrap(),
+            binding: compiler
+                .decoration(resource.id, Decoration::Binding)
+                .unwrap()
+                .unwrap()
+                .as_literal()
+                .unwrap(),
+            descriptor_type,
         })
 }
 
@@ -209,7 +235,7 @@ fn to_format(type_inner: TypeInner) -> (String, u32) {
     let (width, scalar) = match type_inner {
         TypeInner::Scalar(scalar) => (1, scalar),
         TypeInner::Vector { width, scalar } => (width, scalar),
-        _ => todo!(),
+        _ => panic!("unsupported type"),
     };
 
     let size = match scalar.size {
@@ -222,7 +248,7 @@ fn to_format(type_inner: TypeInner) -> (String, u32) {
 
     let kind_str = match scalar.kind {
         ScalarKind::Float => "SFLOAT",
-        _ => todo!(),
+        _ => panic!("unsupported kind"),
     };
 
     (

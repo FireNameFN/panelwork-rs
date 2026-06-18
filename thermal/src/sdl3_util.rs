@@ -10,7 +10,7 @@ pub fn sdl_instance_extensions<'a>() -> Vec<&'a CStr> {
             let ptr = sdl3_sys::vulkan::SDL_Vulkan_GetInstanceExtensions(size);
 
             if ptr.is_null() {
-                panic!("sdl is not initialized")
+                panic!("sdl failure")
             }
 
             ptr

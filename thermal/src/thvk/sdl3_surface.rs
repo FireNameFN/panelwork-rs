@@ -6,14 +6,20 @@ use sdl3_sys::video::SDL_Window;
 use crate::thvk::{handle::ThHandle, instance::ThInstance};
 
 pub struct ThSdl3Surface {
-    pub handle: SurfaceKHR,
+    handle: SurfaceKHR,
 
-    pub instance: Arc<ThInstance>,
+    instance: Arc<ThInstance>,
 }
 
 impl ThHandle<SurfaceKHR> for Arc<ThSdl3Surface> {
     fn handle(&self) -> SurfaceKHR {
         self.handle
+    }
+}
+
+impl ThSdl3Surface {
+    pub fn instance(&self) -> &Arc<ThInstance> {
+        &self.instance
     }
 }
 

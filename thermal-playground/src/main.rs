@@ -13,18 +13,20 @@ use thermal::{
     core::{command::Command, presenter::Presenter, vertex_buffer::VertexBuffer},
     defaults,
     ext::{
-        physical_device::ThPhysicalDeviceIteratorExt, result::PresentResultExt,
+        physical_device::ThPhysicalDeviceIteratorExt, result::SwapchainResultExt,
         sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
     },
     primitives, sdl3_util,
     thvk::{
-        descriptor_set::Binding, device::QueueInfo, image_view::ThImageViewSource,
-        library::ThLibrary, pipeline::GraphicsPipelineSettings,
+        descriptor_set::Binding, device::QueueInfo, handle::ThHandle,
+        image_view::ThImageViewSource, library::ThLibrary, pipeline::GraphicsPipelineSettings,
     },
 };
 
+#[allow(dead_code)]
 const IMAGE: &[u8] = include_bytes!("../resources/OverGreen.png");
 
+#[allow(dead_code)]
 const IMAGE2: &[u8] = include_bytes!("../resources/dennis.png");
 
 fn main() {
@@ -267,7 +269,7 @@ fn main() {
     presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
 
     presenter.present_mode = physical_device
-        .surface_present_modes(surface.handle)
+        .surface_present_modes(surface.handle())
         .unwrap()
         .into_iter()
         .min()
@@ -276,7 +278,7 @@ fn main() {
     presenter.set_size(1280, 720).unwrap();
 
     let mut image_views = presenter
-        .images
+        .images()
         .iter()
         .map(|image| {
             image
@@ -331,7 +333,7 @@ fn main() {
             presenter.set_size(width, height).unwrap();
 
             image_views = presenter
-                .images
+                .images()
                 .iter()
                 .map(|image| {
                     image
@@ -348,7 +350,11 @@ fn main() {
                 .iter()
                 .map(|image_view| {
                     render_pass
-                        .create_framebuffer(&[image_view.handle], presenter.width, presenter.height)
+                        .create_framebuffer(
+                            &[image_view.handle],
+                            presenter.width(),
+                            presenter.height(),
+                        )
                         .unwrap()
                 })
                 .collect::<Vec<_>>();
@@ -372,7 +378,7 @@ fn main() {
         command_buffer.cmd_begin_render_pass(
             render_pass.handle,
             framebuffers[index as usize].handle,
-            primitives::rect(0, 0, presenter.width, presenter.height),
+            primitives::rect(0, 0, presenter.width(), presenter.height()),
             &[ClearValue {
                 color: ClearColorValue {
                     float32: [0., 1., 0., 1.],
@@ -384,11 +390,16 @@ fn main() {
         command_buffer.cmd_set_viewport(primitives::viewport(
             0.,
             0.,
-            presenter.width as f32,
-            presenter.height as f32,
+            presenter.width() as f32,
+            presenter.height() as f32,
         ));
 
-        command_buffer.cmd_set_scissor(primitives::rect(0, 0, presenter.width, presenter.height));
+        command_buffer.cmd_set_scissor(primitives::rect(
+            0,
+            0,
+            presenter.width(),
+            presenter.height(),
+        ));
 
         command_buffer.cmd_bind_vertex_buffers(0, &[buffer], &[0]);
 
@@ -412,10 +423,10 @@ fn main() {
         queue
             .submit(
                 fence.handle,
-                &[presenter.semaphore.handle],
+                &[presenter.semaphore().handle],
                 &[PipelineStageFlags::BOTTOM_OF_PIPE],
                 &[command_buffer.handle],
-                &[presenter.present_semaphores[index as usize].handle],
+                &[presenter.present_semaphores()[index as usize].handle],
             )
             .unwrap();
 

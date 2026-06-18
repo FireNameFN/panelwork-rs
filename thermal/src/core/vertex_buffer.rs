@@ -4,14 +4,14 @@ use ash::vk::{Buffer, BufferUsageFlags, MemoryPropertyFlags};
 
 use crate::thvk::{buffer::ThBuffer, device::ThDevice, physical_device::ThPhysicalDevice};
 
-pub struct VertexBuffer<T> {
+pub struct VertexBuffer<T: Clone> {
     physical_device: ThPhysicalDevice,
 
     device: Arc<ThDevice>,
 
     vertices: Vec<T>,
 
-    buffers: Vec<ThBuffer>,
+    old_buffers: Vec<ThBuffer>,
 
     last_buffer: ThBuffer,
 
@@ -26,10 +26,18 @@ impl<T: Clone> VertexBuffer<T> {
             physical_device,
             device,
             vertices: vec![],
-            buffers: vec![],
+            old_buffers: vec![],
             last_buffer: buffer,
             last_capacity: capacity,
         }
+    }
+
+    pub fn physical_device(&self) -> &ThPhysicalDevice {
+        &self.physical_device
+    }
+
+    pub fn device(&self) -> &Arc<ThDevice> {
+        &self.device
     }
 
     pub fn add(&mut self, slice: &[T]) -> (Buffer, u32) {
@@ -64,15 +72,15 @@ impl<T: Clone> VertexBuffer<T> {
     pub fn clear(&mut self) {
         self.vertices.clear();
 
-        self.buffers.clear();
+        self.old_buffers.clear();
     }
 
     fn grow(&mut self, capacity: u64) {
         let buffer = Self::create_buffer(&self.physical_device, &self.device, capacity);
 
-        let last_buffer = std::mem::replace(&mut self.last_buffer, buffer);
+        let old_buffer = std::mem::replace(&mut self.last_buffer, buffer);
 
-        self.buffers.push(last_buffer);
+        self.old_buffers.push(old_buffer);
 
         self.last_capacity = capacity;
     }

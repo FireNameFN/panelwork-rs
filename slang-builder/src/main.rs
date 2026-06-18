@@ -38,6 +38,8 @@ fn main() {
     let session = global_session.create_session(&session_desc).unwrap();
 
     let mut mod_code = quote! {
+        #![allow(unused_imports)]
+
         use ash::vk::DescriptorSetLayoutBinding;
         use ash::vk::DescriptorType;
         use ash::vk::Format;
@@ -56,7 +58,13 @@ fn main() {
         .map(|file| file.unwrap().path())
         .filter(|file| file.extension().map_or(false, |ext| ext == "slang"))
     {
-        let module = session.load_module(file.to_str().unwrap()).unwrap();
+        let content = fs::read_to_string(file.clone()).unwrap();
+
+        let file_stem = file.file_stem().unwrap().to_str().unwrap();
+
+        let module = session
+            .load_module_from_source_string(file_stem, file.to_str().unwrap(), &content)
+            .unwrap();
 
         let entry_point = module.find_entry_point_by_name("main").unwrap();
 
@@ -70,16 +78,11 @@ fn main() {
 
         let code = blob.as_slice();
 
-        let sb = fs::read_to_string(file.with_extension("sb")).ok();
-
-        let shader_mod_code =
-            reflect::reflect(code, sb, file.file_stem().unwrap().to_str().unwrap());
+        let shader_mod_code = reflect::reflect(code, content, file_stem);
 
         mod_code.extend(shader_mod_code);
 
-        let bin_file = bin_dir
-            .join(file.file_name().unwrap())
-            .with_extension("spv");
+        let bin_file = bin_dir.join(file_stem).with_added_extension("spv");
 
         fs::write(&bin_file, code).unwrap();
 

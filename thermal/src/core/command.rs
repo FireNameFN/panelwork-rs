@@ -18,7 +18,7 @@ use crate::{
 };
 
 pub struct Command {
-    pub command_buffer: ThCommandBuffer,
+    command_buffer: ThCommandBuffer,
 
     fence: ThFence,
 }

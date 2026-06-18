@@ -1,5 +1,5 @@
 struct VSInput {
-  float2 position;
+  float2 position; // sb/vertex
 }
 
 struct VSOutput {

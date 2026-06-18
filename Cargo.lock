@@ -401,6 +401,7 @@ version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
+ "regex",
  "shader-slang",
  "spirv-cross2",
 ]

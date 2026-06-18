@@ -85,7 +85,7 @@ impl ThSwapchain {
                 handle: image,
                 swapchain: self.clone(),
             })
-            .collect::<Vec<_>>())
+            .collect())
     }
 
     pub fn acquire_next_image(

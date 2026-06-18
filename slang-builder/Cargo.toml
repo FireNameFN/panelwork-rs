@@ -6,5 +6,6 @@ edition = "2024"
 [dependencies]
 proc-macro2 = "1.0.106"
 quote = "1.0.45"
+regex = "1.12.4"
 shader-slang = { git = "https://github.com/FloatyMonkey/slang-rs" }
 spirv-cross2 = { version = "0.7.1", default-features = false }
