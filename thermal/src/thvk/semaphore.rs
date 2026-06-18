@@ -4,13 +4,15 @@ use ash::{
     VkResult,
     vk::{Semaphore, SemaphoreCreateInfo},
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::thvk::device::ThDevice;
 
+#[derive(ThDeviceHandle)]
 pub struct ThSemaphore {
-    pub handle: Semaphore,
+    handle: Semaphore,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 }
 
 impl ThDevice {

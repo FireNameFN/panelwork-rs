@@ -4,13 +4,15 @@ use ash::{
     VkResult,
     vk::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo},
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::thvk::device::ThDevice;
 
+#[derive(ThDeviceHandle)]
 pub struct ThSampler {
-    pub handle: Sampler,
+    handle: Sampler,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 }
 
 impl ThDevice {

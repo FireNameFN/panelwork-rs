@@ -7,31 +7,23 @@ use ash::{
         MemoryPropertyFlags, MemoryRequirements, SampleCountFlags,
     },
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::{
     primitives,
     thvk::{
-        device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandleSource,
+        device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle,
         physical_device::ThPhysicalDevice,
     },
 };
 
+#[derive(ThDeviceHandle)]
 pub struct ThImage {
-    pub handle: Image,
+    handle: Image,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 
-    pub memory: Option<Arc<ThDeviceMemory>>,
-}
-
-impl ThHandleSource<Image> for Arc<ThImage> {
-    fn handle(&self) -> Image {
-        self.handle
-    }
-
-    fn device(&self) -> &Arc<ThDevice> {
-        &self.device
-    }
+    memory: Option<Arc<ThDeviceMemory>>,
 }
 
 impl ThDevice {
@@ -96,6 +88,10 @@ impl ThDevice {
 }
 
 impl ThImage {
+    pub fn memory(&self) -> &Option<Arc<ThDeviceMemory>> {
+        &self.memory
+    }
+
     pub fn memory_requirements(&self) -> MemoryRequirements {
         unsafe {
             self.device
@@ -108,7 +104,7 @@ impl ThImage {
         unsafe {
             self.device
                 .handle
-                .bind_image_memory(self.handle, memory.handle, offset)
+                .bind_image_memory(self.handle, memory.handle(), offset)
         }?;
 
         self.memory = Some(memory);

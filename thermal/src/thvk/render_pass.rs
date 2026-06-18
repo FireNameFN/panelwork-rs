@@ -4,13 +4,15 @@ use ash::{
     VkResult,
     vk::{AttachmentDescription, RenderPass, RenderPassCreateInfo, SubpassDescription},
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::thvk::device::ThDevice;
 
+#[derive(ThDeviceHandle)]
 pub struct ThRenderPass {
-    pub handle: RenderPass,
+    handle: RenderPass,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 }
 
 impl ThDevice {

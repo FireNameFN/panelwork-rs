@@ -4,13 +4,15 @@ use ash::{
     VkResult,
     vk::{DescriptorSetLayout, DescriptorSetLayoutBinding, DescriptorSetLayoutCreateInfo},
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::thvk::device::ThDevice;
 
+#[derive(ThDeviceHandle)]
 pub struct ThDescriptorSetLayout {
-    pub handle: DescriptorSetLayout,
+    handle: DescriptorSetLayout,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 }
 
 impl ThDevice {

@@ -155,9 +155,10 @@ fn main() {
         .create_pipeline_layout(descriptor_set_layouts.clone(), &[])
         .unwrap();
 
+    #[allow(unused_variables)]
     let solid_pipeline = solid_pipeline_layout
         .create_graphics_pipeline(
-            render_pass.handle,
+            render_pass.handle(),
             GraphicsPipelineSettings {
                 vertex_shader: vertex_shader.clone(),
 
@@ -176,7 +177,7 @@ fn main() {
 
     let texture_pipeline = texture_pipeline_layout
         .create_graphics_pipeline(
-            render_pass.handle,
+            render_pass.handle(),
             GraphicsPipelineSettings {
                 vertex_shader: vertex_shader,
 
@@ -197,7 +198,7 @@ fn main() {
         .allocate_descriptor_set(
             &descriptor_set_layouts
                 .iter()
-                .map(|set_layout| set_layout.handle)
+                .map(|set_layout| set_layout.handle())
                 .collect::<Vec<_>>(),
         )
         .unwrap();
@@ -237,8 +238,8 @@ fn main() {
     device.update_descriptor_sets(
         &descriptor_sets,
         &[&[Binding::CombinedImageSampler(
-            sampler.handle,
-            image_view.handle,
+            sampler.handle(),
+            image_view.handle(),
             ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         )]],
     );
@@ -295,7 +296,7 @@ fn main() {
         .iter()
         .map(|image_view| {
             render_pass
-                .create_framebuffer(&[image_view.handle], 1280, 720)
+                .create_framebuffer(&[image_view.handle()], 1280, 720)
                 .unwrap()
         })
         .collect::<Vec<_>>();
@@ -351,7 +352,7 @@ fn main() {
                 .map(|image_view| {
                     render_pass
                         .create_framebuffer(
-                            &[image_view.handle],
+                            &[image_view.handle()],
                             presenter.width(),
                             presenter.height(),
                         )
@@ -376,8 +377,8 @@ fn main() {
             .unwrap();
 
         command_buffer.cmd_begin_render_pass(
-            render_pass.handle,
-            framebuffers[index as usize].handle,
+            render_pass.handle(),
+            framebuffers[index as usize].handle(),
             primitives::rect(0, 0, presenter.width(), presenter.height()),
             &[ClearValue {
                 color: ClearColorValue {
@@ -403,11 +404,11 @@ fn main() {
 
         command_buffer.cmd_bind_vertex_buffers(0, &[buffer], &[0]);
 
-        command_buffer.cmd_bind_pipeline(texture_pipeline.handle);
+        command_buffer.cmd_bind_pipeline(texture_pipeline.handle());
 
         command_buffer.cmd_bind_descriptor_sets(
             PipelineBindPoint::GRAPHICS,
-            texture_pipeline_layout.handle,
+            texture_pipeline_layout.handle(),
             0,
             &descriptor_sets,
         );
@@ -422,11 +423,11 @@ fn main() {
 
         queue
             .submit(
-                fence.handle,
-                &[presenter.semaphore().handle],
+                fence.handle(),
+                &[presenter.semaphore().handle()],
                 &[PipelineStageFlags::BOTTOM_OF_PIPE],
                 &[command_buffer.handle],
-                &[presenter.present_semaphores()[index as usize].handle],
+                &[presenter.present_semaphores()[index as usize].handle()],
             )
             .unwrap();
 

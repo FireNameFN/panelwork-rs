@@ -5,12 +5,28 @@ use ash::{
     vk::{Framebuffer, FramebufferCreateInfo, ImageView},
 };
 
-use crate::thvk::render_pass::ThRenderPass;
+use crate::thvk::{
+    device::ThDevice,
+    handle::{ThDeviceHandle, ThHandle},
+    render_pass::ThRenderPass,
+};
 
 pub struct ThFramebuffer {
-    pub handle: Framebuffer,
+    handle: Framebuffer,
 
-    pub render_pass: Arc<ThRenderPass>,
+    render_pass: Arc<ThRenderPass>,
+}
+
+impl ThHandle<Framebuffer> for ThFramebuffer {
+    fn handle(&self) -> Framebuffer {
+        self.handle
+    }
+}
+
+impl ThDeviceHandle<Framebuffer> for ThFramebuffer {
+    fn device(&self) -> &Arc<ThDevice> {
+        self.render_pass.device()
+    }
 }
 
 impl ThRenderPass {
@@ -21,7 +37,7 @@ impl ThRenderPass {
         height: u32,
     ) -> VkResult<ThFramebuffer> {
         let framebuffer_info = FramebufferCreateInfo {
-            render_pass: self.handle,
+            render_pass: self.handle(),
             attachment_count: attachments.len() as u32,
             p_attachments: attachments.as_ptr(),
             width: width,
@@ -31,7 +47,7 @@ impl ThRenderPass {
         };
 
         let handle = unsafe {
-            self.device
+            self.device()
                 .handle
                 .create_framebuffer(&framebuffer_info, None)
         }?;
@@ -43,11 +59,17 @@ impl ThRenderPass {
     }
 }
 
+impl ThFramebuffer {
+    pub fn render_pass(&self) -> &Arc<ThRenderPass> {
+        &self.render_pass
+    }
+}
+
 impl Drop for ThFramebuffer {
     fn drop(&mut self) {
         unsafe {
             self.render_pass
-                .device
+                .device()
                 .handle
                 .destroy_framebuffer(self.handle, None)
         }

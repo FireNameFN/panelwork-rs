@@ -4,13 +4,15 @@ use ash::{
     VkResult,
     vk::{ShaderModule, ShaderModuleCreateInfo},
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::thvk::device::ThDevice;
 
+#[derive(ThDeviceHandle)]
 pub struct ThShaderModule {
-    pub handle: ShaderModule,
+    handle: ShaderModule,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 }
 
 impl ThDevice {

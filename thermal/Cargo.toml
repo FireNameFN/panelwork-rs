@@ -10,3 +10,4 @@ sdl3 = ["dep:sdl3-sys"]
 ash = { workspace = true }
 sdl3-sys = { workspace = true, optional = true }
 slang-builder-runtime = { path = "../slang-builder-runtime" }
+thermal-derive = { path = "thermal-derive" }

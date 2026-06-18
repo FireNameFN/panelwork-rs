@@ -14,14 +14,30 @@ use ash::{
     },
 };
 
-use crate::thvk::{pipeline_layout::ThPipelineLayout, shader_module::ThShaderModule};
+use crate::thvk::{
+    handle::{ThDeviceHandle, ThHandle},
+    pipeline_layout::ThPipelineLayout,
+    shader_module::ThShaderModule,
+};
 
 pub struct ThPipeline {
-    pub handle: Pipeline,
+    handle: Pipeline,
 
-    pub layout: Arc<ThPipelineLayout>,
+    layout: Arc<ThPipelineLayout>,
 
-    pub shader_modules: [Arc<ThShaderModule>; 2],
+    _shader_modules: [Arc<ThShaderModule>; 2],
+}
+
+impl ThHandle<Pipeline> for ThPipeline {
+    fn handle(&self) -> Pipeline {
+        self.handle
+    }
+}
+
+impl ThDeviceHandle<Pipeline> for ThPipeline {
+    fn device(&self) -> &Arc<super::device::ThDevice> {
+        &self.layout.device()
+    }
 }
 
 pub struct GraphicsPipelineSettings<'a> {
@@ -47,13 +63,13 @@ impl ThPipelineLayout {
         let stages_info = [
             PipelineShaderStageCreateInfo {
                 stage: ShaderStageFlags::VERTEX,
-                module: settings.vertex_shader.handle,
+                module: settings.vertex_shader.handle(),
                 p_name: c"main".as_ptr(),
                 ..Default::default()
             },
             PipelineShaderStageCreateInfo {
                 stage: ShaderStageFlags::FRAGMENT,
-                module: settings.fragment_shader.handle,
+                module: settings.fragment_shader.handle(),
                 p_name: c"main".as_ptr(),
                 ..Default::default()
             },
@@ -129,13 +145,13 @@ impl ThPipelineLayout {
             p_multisample_state: &multisample_info,
             p_color_blend_state: &blend_info,
             p_dynamic_state: &dynamic_info,
-            layout: self.handle,
+            layout: self.handle(),
             render_pass: render_pass,
             ..Default::default()
         };
 
         let handles = unsafe {
-            self.device.handle.create_graphics_pipelines(
+            self.device().handle.create_graphics_pipelines(
                 PipelineCache::null(),
                 &[pipeline_info],
                 None,
@@ -146,8 +162,14 @@ impl ThPipelineLayout {
         Ok(ThPipeline {
             handle: handles[0],
             layout: self.clone(),
-            shader_modules: [settings.vertex_shader, settings.fragment_shader],
+            _shader_modules: [settings.vertex_shader, settings.fragment_shader],
         })
+    }
+}
+
+impl ThPipeline {
+    pub fn layout(&self) -> &Arc<ThPipelineLayout> {
+        &self.layout
     }
 }
 
@@ -155,7 +177,7 @@ impl Drop for ThPipeline {
     fn drop(&mut self) {
         unsafe {
             self.layout
-                .device
+                .device()
                 .handle
                 .destroy_pipeline(self.handle, None)
         }

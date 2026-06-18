@@ -8,7 +8,7 @@ use ash::{
 use crate::{
     primitives,
     thvk::{
-        handle::ThHandle,
+        handle::{ThDeviceHandle, ThHandle},
         physical_device::ThPhysicalDevice,
         queue::ThQueue,
         semaphore::ThSemaphore,
@@ -44,7 +44,7 @@ pub struct Presenter<T: ThHandle<SurfaceKHR>> {
 
 impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
     pub fn new(physical_device: ThPhysicalDevice, queue: ThQueue, surface: T) -> VkResult<Self> {
-        let semaphore = queue.device.create_semaphore()?;
+        let semaphore = queue.device().create_semaphore()?;
 
         Ok(Self {
             physical_device: physical_device,
@@ -97,15 +97,15 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
     pub fn acquire_next_image(&self, timeout: u64) -> VkResult<(u32, bool)> {
         self.swapchain.as_ref().unwrap().acquire_next_image(
             timeout,
-            self.semaphore.handle,
+            self.semaphore.handle(),
             Fence::null(),
         )
     }
 
     pub fn present(&self, index: u32) -> VkResult<bool> {
         self.swapchain.as_ref().unwrap().present(
-            self.queue.handle,
-            &[self.present_semaphores[index as usize].handle],
+            self.queue.handle(),
+            &[self.present_semaphores[index as usize].handle()],
             index,
         )
     }
@@ -125,14 +125,14 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
             capabilities.max_image_extent.height,
         );
 
-        let swapchain = self.queue.device.create_swapchain(
+        let swapchain = self.queue.device().create_swapchain(
             self.surface.handle(),
             capabilities.min_image_count,
             self.format,
             primitives::extent(self.width, self.height),
             self.usage,
             self.present_mode,
-            self.swapchain.as_ref().map(|swapchain| swapchain.handle),
+            self.swapchain.as_ref().map(|swapchain| swapchain.handle()),
         )?;
 
         self.queue.wait_idle().unwrap();
@@ -142,7 +142,7 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
         self.present_semaphores = self
             .images
             .iter()
-            .map(|_| self.queue.device.create_semaphore())
+            .map(|_| self.queue.device().create_semaphore())
             .collect::<VkResult<Vec<_>>>()?;
 
         self.swapchain = Some(swapchain);

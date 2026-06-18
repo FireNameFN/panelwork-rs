@@ -7,13 +7,15 @@ use ash::{
         DescriptorSetAllocateInfo, DescriptorSetLayout,
     },
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::thvk::device::ThDevice;
 
+#[derive(ThDeviceHandle)]
 pub struct ThDescriptorPool {
-    pub handle: DescriptorPool,
+    handle: DescriptorPool,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 }
 
 impl ThDevice {

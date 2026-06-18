@@ -9,26 +9,32 @@ use ash::{
     },
 };
 
-use crate::thvk::{device::ThDevice, handle::ThHandleSource};
+use crate::thvk::{
+    device::ThDevice,
+    handle::{ThDeviceHandle, ThHandle},
+};
 
+#[derive(ThDeviceHandle)]
 pub struct ThSwapchain {
-    pub handle: SwapchainKHR,
+    handle: SwapchainKHR,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 }
 
 #[derive(Clone)]
 pub struct ThSwapchainImage {
-    pub handle: Image,
+    handle: Image,
 
-    pub swapchain: Arc<ThSwapchain>,
+    swapchain: Arc<ThSwapchain>,
 }
 
-impl ThHandleSource<Image> for ThSwapchainImage {
+impl ThHandle<Image> for ThSwapchainImage {
     fn handle(&self) -> Image {
         self.handle
     }
+}
 
+impl ThDeviceHandle<Image> for ThSwapchainImage {
     fn device(&self) -> &Arc<ThDevice> {
         &self.swapchain.device
     }

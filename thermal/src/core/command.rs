@@ -12,8 +12,12 @@ use ash::{
 use crate::{
     defaults, primitives,
     thvk::{
-        command_buffer::ThCommandBuffer, fence::ThFence, image::ThImage,
-        physical_device::ThPhysicalDevice, queue::ThQueue,
+        command_buffer::ThCommandBuffer,
+        fence::ThFence,
+        handle::{ThDeviceHandle, ThHandle},
+        image::ThImage,
+        physical_device::ThPhysicalDevice,
+        queue::ThQueue,
     },
 };
 
@@ -29,7 +33,7 @@ impl Command {
 
         let command_buffer = command_pool.allocate_command_buffer(CommandBufferLevel::PRIMARY)?;
 
-        let fence = queue.device.create_fence()?;
+        let fence = queue.device().create_fence()?;
 
         Ok(Self {
             command_buffer,
@@ -38,8 +42,8 @@ impl Command {
     }
 
     pub fn execute(&self) -> VkResult<()> {
-        self.command_buffer.command_pool.queue.submit(
-            self.fence.handle,
+        self.command_buffer.command_pool.queue().submit(
+            self.fence.handle(),
             &[],
             &[],
             &[self.command_buffer.handle],
@@ -65,35 +69,25 @@ impl Command {
         height: u32,
         pixel_size: u32,
     ) -> VkResult<Arc<ThImage>> {
-        let image = self
-            .command_buffer
-            .command_pool
-            .queue
-            .device
-            .allocate_image(
-                &physical_device,
-                format,
-                primitives::extent(width, height),
-                mip_levels,
-                SampleCountFlags::TYPE_1,
-                ImageUsageFlags::TRANSFER_DST | ImageUsageFlags::SAMPLED,
-            )?;
+        let image = self.command_buffer.device().allocate_image(
+            &physical_device,
+            format,
+            primitives::extent(width, height),
+            mip_levels,
+            SampleCountFlags::TYPE_1,
+            ImageUsageFlags::TRANSFER_DST | ImageUsageFlags::SAMPLED,
+        )?;
 
         let size = width as u64 * height as u64 * pixel_size as u64;
 
-        let buffer = self
-            .command_buffer
-            .command_pool
-            .queue
-            .device
-            .allocate_buffer(
-                &physical_device,
-                size,
-                BufferUsageFlags::TRANSFER_SRC,
-                MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
-            )?;
+        let buffer = self.command_buffer.device().allocate_buffer(
+            &physical_device,
+            size,
+            BufferUsageFlags::TRANSFER_SRC,
+            MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
+        )?;
 
-        buffer.memory.as_ref().unwrap().copy_from(slice)?;
+        buffer.memory().as_ref().unwrap().copy_from(slice)?;
 
         let image_copy = BufferImageCopy {
             buffer_row_length: width,
@@ -107,7 +101,7 @@ impl Command {
             .begin(CommandBufferUsageFlags::ONE_TIME_SUBMIT)?;
 
         self.command_buffer.cmd_image_barrier(
-            image.handle,
+            image.handle(),
             AccessFlags::NONE,
             AccessFlags::TRANSFER_WRITE,
             ImageLayout::UNDEFINED,
@@ -118,21 +112,19 @@ impl Command {
 
         unsafe {
             self.command_buffer
-                .command_pool
-                .queue
-                .device
+                .device()
                 .handle
                 .cmd_copy_buffer_to_image(
                     self.command_buffer.handle,
-                    buffer.handle,
-                    image.handle,
+                    buffer.handle(),
+                    image.handle(),
                     ImageLayout::TRANSFER_DST_OPTIMAL,
                     &[image_copy],
                 )
         };
 
         self.command_buffer.cmd_image_barrier(
-            image.handle,
+            image.handle(),
             AccessFlags::TRANSFER_WRITE,
             AccessFlags::SHADER_READ,
             ImageLayout::TRANSFER_DST_OPTIMAL,

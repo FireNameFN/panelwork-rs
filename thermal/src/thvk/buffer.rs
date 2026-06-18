@@ -4,17 +4,20 @@ use ash::{
     VkResult,
     vk::{Buffer, BufferCreateInfo, BufferUsageFlags, MemoryPropertyFlags, MemoryRequirements},
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::thvk::{
-    device::ThDevice, device_memory::ThDeviceMemory, physical_device::ThPhysicalDevice,
+    device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle,
+    physical_device::ThPhysicalDevice,
 };
 
+#[derive(ThDeviceHandle)]
 pub struct ThBuffer {
-    pub handle: Buffer,
+    handle: Buffer,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 
-    pub memory: Option<Arc<ThDeviceMemory>>,
+    memory: Option<Arc<ThDeviceMemory>>,
 }
 
 impl ThDevice {
@@ -57,6 +60,10 @@ impl ThDevice {
 }
 
 impl ThBuffer {
+    pub fn memory(&self) -> &Option<Arc<ThDeviceMemory>> {
+        &self.memory
+    }
+
     pub fn memory_requirements(&self) -> MemoryRequirements {
         unsafe {
             self.device
@@ -69,7 +76,7 @@ impl ThBuffer {
         unsafe {
             self.device
                 .handle
-                .bind_buffer_memory(self.handle, memory.handle, offset)
+                .bind_buffer_memory(self.handle, memory.handle(), offset)
         }?;
 
         self.memory = Some(memory);

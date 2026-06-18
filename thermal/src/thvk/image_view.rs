@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ash::{
     VkResult,
     vk::{
@@ -6,15 +8,30 @@ use ash::{
     },
 };
 
-use crate::thvk::handle::ThHandleSource;
+use crate::thvk::{
+    device::ThDevice,
+    handle::{ThDeviceHandle, ThHandle, ThSourceHandle},
+};
 
-pub struct ThImageView<T: ThHandleSource<Image>> {
-    pub handle: ImageView,
+pub struct ThImageView<T: ThSourceHandle<Image>> {
+    handle: ImageView,
 
-    pub image: T,
+    image: T,
 }
 
-pub trait ThImageViewSource: ThHandleSource<Image> {
+impl<T: ThSourceHandle<Image>> ThHandle<ImageView> for ThImageView<T> {
+    fn handle(&self) -> ImageView {
+        self.handle
+    }
+}
+
+impl<T: ThSourceHandle<Image>> ThDeviceHandle<ImageView> for ThImageView<T> {
+    fn device(&self) -> &Arc<ThDevice> {
+        self.image.device()
+    }
+}
+
+pub trait ThImageViewSource: ThSourceHandle<Image> {
     fn create_image_view(
         &self,
         format: Format,
@@ -23,7 +40,7 @@ pub trait ThImageViewSource: ThHandleSource<Image> {
     ) -> VkResult<ThImageView<Self>>;
 }
 
-impl<T: ThHandleSource<Image>> ThImageViewSource for T {
+impl<T: ThSourceHandle<Image>> ThImageViewSource for T {
     fn create_image_view(
         &self,
         format: Format,
@@ -52,7 +69,13 @@ impl<T: ThHandleSource<Image>> ThImageViewSource for T {
     }
 }
 
-impl<T: ThHandleSource<Image>> Drop for ThImageView<T> {
+impl<T: ThSourceHandle<Image>> ThImageView<T> {
+    pub fn image(&self) -> &T {
+        &self.image
+    }
+}
+
+impl<T: ThSourceHandle<Image>> Drop for ThImageView<T> {
     fn drop(&mut self) {
         unsafe {
             self.image

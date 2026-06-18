@@ -4,16 +4,17 @@ use ash::{
     VkResult,
     vk::{CommandBuffer, Fence, PipelineStageFlags, Queue, Semaphore, SubmitInfo},
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::thvk::device::ThDevice;
 
-#[derive(Clone)]
+#[derive(ThDeviceHandle, Clone)]
 pub struct ThQueue {
-    pub handle: Queue,
+    handle: Queue,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 
-    pub family: u32,
+    family: u32,
 }
 
 impl ThDevice {
@@ -29,6 +30,10 @@ impl ThDevice {
 }
 
 impl ThQueue {
+    pub fn family(&self) -> u32 {
+        self.family
+    }
+
     pub fn submit(
         &self,
         fence: Fence,

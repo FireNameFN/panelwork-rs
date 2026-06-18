@@ -4,13 +4,15 @@ use ash::{
     VkResult,
     vk::{Fence, FenceCreateInfo},
 };
+use thermal_derive::ThDeviceHandle;
 
 use crate::thvk::device::ThDevice;
 
+#[derive(ThDeviceHandle)]
 pub struct ThFence {
-    pub handle: Fence,
+    handle: Fence,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 }
 
 impl ThDevice {

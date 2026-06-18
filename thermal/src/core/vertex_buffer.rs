@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use ash::vk::{Buffer, BufferUsageFlags, MemoryPropertyFlags};
 
-use crate::thvk::{buffer::ThBuffer, device::ThDevice, physical_device::ThPhysicalDevice};
+use crate::thvk::{
+    buffer::ThBuffer, device::ThDevice, handle::ThHandle, physical_device::ThPhysicalDevice,
+};
 
 pub struct VertexBuffer<T: Clone> {
     physical_device: ThPhysicalDevice,
@@ -55,12 +57,12 @@ impl<T: Clone> VertexBuffer<T> {
 
         self.vertices.extend_from_slice(slice);
 
-        (self.last_buffer.handle, index as u32)
+        (self.last_buffer.handle(), index as u32)
     }
 
     pub fn flush(&mut self) {
         self.last_buffer
-            .memory
+            .memory()
             .as_ref()
             .unwrap()
             .copy_from(&self.vertices)

@@ -8,12 +8,29 @@ use ash::{
     },
 };
 
-use crate::thvk::{command_buffer::ThCommandBuffer, queue::ThQueue};
+use crate::thvk::{
+    command_buffer::ThCommandBuffer,
+    device::ThDevice,
+    handle::{ThDeviceHandle, ThHandle},
+    queue::ThQueue,
+};
 
 pub struct ThCommandPool {
-    pub handle: CommandPool,
+    handle: CommandPool,
 
-    pub queue: ThQueue,
+    queue: ThQueue,
+}
+
+impl ThHandle<CommandPool> for ThCommandPool {
+    fn handle(&self) -> CommandPool {
+        self.handle
+    }
+}
+
+impl ThDeviceHandle<CommandPool> for ThCommandPool {
+    fn device(&self) -> &Arc<ThDevice> {
+        self.queue.device()
+    }
 }
 
 impl ThQueue {
@@ -23,12 +40,12 @@ impl ThQueue {
     ) -> VkResult<Arc<ThCommandPool>> {
         let command_pool_info = CommandPoolCreateInfo {
             flags,
-            queue_family_index: self.family,
+            queue_family_index: self.family(),
             ..Default::default()
         };
 
         let handle = unsafe {
-            self.device
+            self.device()
                 .handle
                 .create_command_pool(&command_pool_info, None)
         }?;
@@ -41,6 +58,10 @@ impl ThQueue {
 }
 
 impl ThCommandPool {
+    pub fn queue(&self) -> &ThQueue {
+        &self.queue
+    }
+
     pub fn allocate_command_buffer(
         self: &Arc<ThCommandPool>,
         level: CommandBufferLevel,
@@ -53,8 +74,7 @@ impl ThCommandPool {
         };
 
         let handle = unsafe {
-            self.queue
-                .device
+            self.device()
                 .handle
                 .allocate_command_buffers(&command_buffer_info)
         }?;
@@ -67,8 +87,7 @@ impl ThCommandPool {
 
     pub fn reset(&self) -> VkResult<()> {
         unsafe {
-            self.queue
-                .device
+            self.device()
                 .handle
                 .reset_command_pool(self.handle, CommandPoolResetFlags::empty())
         }
@@ -76,8 +95,7 @@ impl ThCommandPool {
 
     pub fn free_command_buffer(&self, command_buffer: CommandBuffer) {
         unsafe {
-            self.queue
-                .device
+            self.device()
                 .handle
                 .free_command_buffers(self.handle, &[command_buffer])
         }
@@ -86,11 +104,6 @@ impl ThCommandPool {
 
 impl Drop for ThCommandPool {
     fn drop(&mut self) {
-        unsafe {
-            self.queue
-                .device
-                .handle
-                .destroy_command_pool(self.handle, None)
-        }
+        unsafe { self.device().handle.destroy_command_pool(self.handle, None) }
     }
 }

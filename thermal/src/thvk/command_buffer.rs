@@ -11,12 +11,28 @@ use ash::{
     },
 };
 
-use crate::thvk::command_pool::ThCommandPool;
+use crate::thvk::{
+    command_pool::ThCommandPool,
+    device::ThDevice,
+    handle::{ThDeviceHandle, ThHandle},
+};
 
 pub struct ThCommandBuffer {
     pub handle: CommandBuffer,
 
     pub command_pool: Arc<ThCommandPool>,
+}
+
+impl ThHandle<CommandBuffer> for ThCommandBuffer {
+    fn handle(&self) -> CommandBuffer {
+        self.handle
+    }
+}
+
+impl ThDeviceHandle<CommandBuffer> for ThCommandBuffer {
+    fn device(&self) -> &Arc<ThDevice> {
+        self.command_pool.device()
+    }
 }
 
 impl ThCommandBuffer {
@@ -27,22 +43,14 @@ impl ThCommandBuffer {
         };
 
         unsafe {
-            self.command_pool
-                .queue
-                .device
+            self.device()
                 .handle
                 .begin_command_buffer(self.handle, &begin_info)
         }
     }
 
     pub fn end(&self) -> VkResult<()> {
-        unsafe {
-            self.command_pool
-                .queue
-                .device
-                .handle
-                .end_command_buffer(self.handle)
-        }
+        unsafe { self.device().handle.end_command_buffer(self.handle) }
     }
 
     pub fn cmd_begin_render_pass(
@@ -68,19 +76,17 @@ impl ThCommandBuffer {
         };
 
         unsafe {
-            self.command_pool
-                .queue
-                .device
-                .handle
-                .cmd_begin_render_pass2(self.handle, &render_pass_info, &subpass_info)
+            self.device().handle.cmd_begin_render_pass2(
+                self.handle,
+                &render_pass_info,
+                &subpass_info,
+            )
         }
     }
 
     pub fn cmd_end_render_pass(&self) {
         unsafe {
-            self.command_pool
-                .queue
-                .device
+            self.device()
                 .handle
                 .cmd_end_render_pass2(self.handle, &SubpassEndInfo::default())
         }
@@ -88,9 +94,7 @@ impl ThCommandBuffer {
 
     pub fn cmd_set_viewport(&self, viewport: Viewport) {
         unsafe {
-            self.command_pool
-                .queue
-                .device
+            self.device()
                 .handle
                 .cmd_set_viewport(self.handle, 0, &[viewport])
         }
@@ -98,9 +102,7 @@ impl ThCommandBuffer {
 
     pub fn cmd_set_scissor(&self, scissor: Rect2D) {
         unsafe {
-            self.command_pool
-                .queue
-                .device
+            self.device()
                 .handle
                 .cmd_set_scissor(self.handle, 0, &[scissor])
         }
@@ -108,7 +110,7 @@ impl ThCommandBuffer {
 
     pub fn cmd_bind_pipeline(&self, pipeline: Pipeline) {
         unsafe {
-            self.command_pool.queue.device.handle.cmd_bind_pipeline(
+            self.device().handle.cmd_bind_pipeline(
                 self.handle,
                 PipelineBindPoint::GRAPHICS,
                 pipeline,
@@ -118,11 +120,12 @@ impl ThCommandBuffer {
 
     pub fn cmd_bind_vertex_buffers(&self, first_binding: u32, buffers: &[Buffer], offsets: &[u64]) {
         unsafe {
-            self.command_pool
-                .queue
-                .device
-                .handle
-                .cmd_bind_vertex_buffers(self.handle, first_binding, buffers, offsets)
+            self.device().handle.cmd_bind_vertex_buffers(
+                self.handle,
+                first_binding,
+                buffers,
+                offsets,
+            )
         }
     }
 
@@ -134,18 +137,14 @@ impl ThCommandBuffer {
         descriptor_sets: &[DescriptorSet],
     ) {
         unsafe {
-            self.command_pool
-                .queue
-                .device
-                .handle
-                .cmd_bind_descriptor_sets(
-                    self.handle,
-                    bind_point,
-                    pipeline_layout,
-                    first_set,
-                    descriptor_sets,
-                    &[],
-                )
+            self.device().handle.cmd_bind_descriptor_sets(
+                self.handle,
+                bind_point,
+                pipeline_layout,
+                first_set,
+                descriptor_sets,
+                &[],
+            )
         }
     }
 
@@ -157,7 +156,7 @@ impl ThCommandBuffer {
         first_instance: u32,
     ) {
         unsafe {
-            self.command_pool.queue.device.handle.cmd_draw(
+            self.device().handle.cmd_draw(
                 self.handle,
                 vertex_count,
                 instance_count,
@@ -196,7 +195,7 @@ impl ThCommandBuffer {
         };
 
         unsafe {
-            self.command_pool.queue.device.handle.cmd_pipeline_barrier(
+            self.device().handle.cmd_pipeline_barrier(
                 self.handle,
                 src_stage,
                 dst_stage,

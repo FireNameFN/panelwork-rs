@@ -4,15 +4,19 @@ use ash::{
     VkResult,
     vk::{PipelineLayout, PipelineLayoutCreateInfo, PushConstantRange},
 };
+use thermal_derive::ThDeviceHandle;
 
-use crate::thvk::{descriptor_set_layout::ThDescriptorSetLayout, device::ThDevice};
+use crate::thvk::{
+    descriptor_set_layout::ThDescriptorSetLayout, device::ThDevice, handle::ThHandle,
+};
 
+#[derive(ThDeviceHandle)]
 pub struct ThPipelineLayout {
-    pub handle: PipelineLayout,
+    handle: PipelineLayout,
 
-    pub device: Arc<ThDevice>,
+    device: Arc<ThDevice>,
 
-    pub set_layouts: Vec<Arc<ThDescriptorSetLayout>>,
+    set_layouts: Vec<Arc<ThDescriptorSetLayout>>,
 }
 
 impl ThDevice {
@@ -23,7 +27,7 @@ impl ThDevice {
     ) -> VkResult<Arc<ThPipelineLayout>> {
         let set_layouts_ptr = set_layouts
             .iter()
-            .map(|set_layout| set_layout.handle)
+            .map(|set_layout| set_layout.handle())
             .collect::<Vec<_>>();
 
         let pipeline_layout_info = PipelineLayoutCreateInfo {
@@ -44,6 +48,12 @@ impl ThDevice {
             device: self.clone(),
             set_layouts: set_layouts,
         }))
+    }
+}
+
+impl ThPipelineLayout {
+    pub fn set_layouts(&self) -> &Vec<Arc<ThDescriptorSetLayout>> {
+        &self.set_layouts
     }
 }
 
