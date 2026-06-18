@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ash::{
     VkResult,
     vk::{
@@ -10,7 +12,7 @@ use ash::{
 use crate::{
     defaults, primitives,
     thvk::{
-        command_buffer::ThCommandBuffer, device_image::ThDeviceImage, fence::ThFence,
+        command_buffer::ThCommandBuffer, fence::ThFence, image::ThImage,
         physical_device::ThPhysicalDevice, queue::ThQueue,
     },
 };
@@ -62,7 +64,7 @@ impl Command {
         width: u32,
         height: u32,
         pixel_size: u32,
-    ) -> VkResult<ThDeviceImage> {
+    ) -> VkResult<Arc<ThImage>> {
         let image = self
             .command_buffer
             .command_pool
@@ -91,7 +93,7 @@ impl Command {
                 MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
             )?;
 
-        buffer.memory().copy_from(slice)?;
+        buffer.memory.as_ref().unwrap().copy_from(slice)?;
 
         let image_copy = BufferImageCopy {
             buffer_row_length: width,
@@ -105,7 +107,7 @@ impl Command {
             .begin(CommandBufferUsageFlags::ONE_TIME_SUBMIT)?;
 
         self.command_buffer.cmd_image_barrier(
-            image.image().handle,
+            image.handle,
             AccessFlags::NONE,
             AccessFlags::TRANSFER_WRITE,
             ImageLayout::UNDEFINED,
@@ -122,15 +124,15 @@ impl Command {
                 .handle
                 .cmd_copy_buffer_to_image(
                     self.command_buffer.handle,
-                    buffer.buffer().handle,
-                    image.image().handle,
+                    buffer.handle,
+                    image.handle,
                     ImageLayout::TRANSFER_DST_OPTIMAL,
                     &[image_copy],
                 )
         };
 
         self.command_buffer.cmd_image_barrier(
-            image.image().handle,
+            image.handle,
             AccessFlags::TRANSFER_WRITE,
             AccessFlags::SHADER_READ,
             ImageLayout::TRANSFER_DST_OPTIMAL,

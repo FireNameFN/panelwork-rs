@@ -8,8 +8,11 @@ use ash::{
 use crate::{
     primitives,
     thvk::{
-        handle::ThHandle, image::ThImage, physical_device::ThPhysicalDevice, queue::ThQueue,
-        semaphore::ThSemaphore, swapchain::ThSwapchain,
+        handle::ThHandle,
+        physical_device::ThPhysicalDevice,
+        queue::ThQueue,
+        semaphore::ThSemaphore,
+        swapchain::{ThSwapchain, ThSwapchainImage},
     },
 };
 
@@ -22,7 +25,7 @@ pub struct Presenter<T: ThHandle<SurfaceKHR>> {
 
     pub semaphore: ThSemaphore,
 
-    pub images: Vec<Arc<ThImage>>,
+    pub images: Vec<ThSwapchainImage>,
 
     pub present_semaphores: Vec<ThSemaphore>,
 
@@ -36,7 +39,7 @@ pub struct Presenter<T: ThHandle<SurfaceKHR>> {
 
     pub present_mode: PresentModeKHR,
 
-    swapchain: Option<ThSwapchain>,
+    swapchain: Option<Arc<ThSwapchain>>,
 }
 
 impl<T: ThHandle<SurfaceKHR>> Presenter<T> {

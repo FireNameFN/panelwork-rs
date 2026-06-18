@@ -2,15 +2,19 @@ use std::sync::Arc;
 
 use ash::{
     VkResult,
-    vk::{Buffer, BufferCreateInfo, BufferUsageFlags, DeviceMemory, MemoryRequirements},
+    vk::{Buffer, BufferCreateInfo, BufferUsageFlags, MemoryPropertyFlags, MemoryRequirements},
 };
 
-use crate::thvk::device::ThDevice;
+use crate::thvk::{
+    device::ThDevice, device_memory::ThDeviceMemory, physical_device::ThPhysicalDevice,
+};
 
 pub struct ThBuffer {
     pub handle: Buffer,
 
     pub device: Arc<ThDevice>,
+
+    pub memory: Option<Arc<ThDeviceMemory>>,
 }
 
 impl ThDevice {
@@ -18,7 +22,7 @@ impl ThDevice {
         self: &Arc<ThDevice>,
         size: u64,
         usage: BufferUsageFlags,
-    ) -> VkResult<ThBuffer> {
+    ) -> VkResult<Arc<ThBuffer>> {
         let buffer_info = BufferCreateInfo {
             size,
             usage,
@@ -27,10 +31,28 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.create_buffer(&buffer_info, None) }?;
 
-        Ok(ThBuffer {
+        Ok(Arc::new(ThBuffer {
             handle,
             device: self.clone(),
-        })
+            memory: None,
+        }))
+    }
+
+    pub fn allocate_buffer(
+        self: &Arc<ThDevice>,
+        physical_device: &ThPhysicalDevice,
+        size: u64,
+        usage: BufferUsageFlags,
+        properties: MemoryPropertyFlags,
+    ) -> VkResult<Arc<ThBuffer>> {
+        let mut buffer = self.create_buffer(size, usage)?;
+
+        let memory =
+            self.allocate_memory_buffer_properties(physical_device, &buffer, properties)?;
+
+        Arc::get_mut(&mut buffer).unwrap().bind_memory(memory, 0)?;
+
+        Ok(buffer)
     }
 }
 
@@ -43,12 +65,16 @@ impl ThBuffer {
         }
     }
 
-    pub fn bind_memory(&self, memory: DeviceMemory, offset: u64) -> VkResult<()> {
+    pub fn bind_memory(&mut self, memory: Arc<ThDeviceMemory>, offset: u64) -> VkResult<()> {
         unsafe {
             self.device
                 .handle
-                .bind_buffer_memory(self.handle, memory, offset)
-        }
+                .bind_buffer_memory(self.handle, memory.handle, offset)
+        }?;
+
+        self.memory = Some(memory);
+
+        Ok(())
     }
 }
 

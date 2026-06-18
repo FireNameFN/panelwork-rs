@@ -3,18 +3,35 @@ use std::sync::Arc;
 use ash::{
     VkResult,
     vk::{
-        CompositeAlphaFlagsKHR, Extent2D, Fence, Format, ImageUsageFlags, PresentInfoKHR,
+        CompositeAlphaFlagsKHR, Extent2D, Fence, Format, Image, ImageUsageFlags, PresentInfoKHR,
         PresentModeKHR, Queue, Semaphore, SurfaceKHR, SurfaceTransformFlagsKHR,
         SwapchainCreateInfoKHR, SwapchainKHR,
     },
 };
 
-use crate::thvk::{device::ThDevice, image::ThImage};
+use crate::thvk::{device::ThDevice, handle::ThHandleSource};
 
 pub struct ThSwapchain {
     pub handle: SwapchainKHR,
 
     pub device: Arc<ThDevice>,
+}
+
+#[derive(Clone)]
+pub struct ThSwapchainImage {
+    pub handle: Image,
+
+    pub swapchain: Arc<ThSwapchain>,
+}
+
+impl ThHandleSource<Image> for ThSwapchainImage {
+    fn handle(&self) -> Image {
+        self.handle
+    }
+
+    fn device(&self) -> &Arc<ThDevice> {
+        &self.swapchain.device
+    }
 }
 
 impl ThDevice {
@@ -27,7 +44,7 @@ impl ThDevice {
         usage: ImageUsageFlags,
         present_mode: PresentModeKHR,
         old_swapchain: Option<SwapchainKHR>,
-    ) -> VkResult<ThSwapchain> {
+    ) -> VkResult<Arc<ThSwapchain>> {
         let swapchain_info = SwapchainCreateInfoKHR {
             surface,
             min_image_count,
@@ -47,15 +64,15 @@ impl ThDevice {
                 .create_swapchain(&swapchain_info, None)
         }?;
 
-        Ok(ThSwapchain {
+        Ok(Arc::new(ThSwapchain {
             handle,
             device: self.clone(),
-        })
+        }))
     }
 }
 
 impl ThSwapchain {
-    pub fn images(&self) -> VkResult<Vec<Arc<ThImage>>> {
+    pub fn images(self: &Arc<ThSwapchain>) -> VkResult<Vec<ThSwapchainImage>> {
         let images = unsafe {
             self.device
                 .swapchain_device
@@ -64,12 +81,9 @@ impl ThSwapchain {
 
         Ok(images
             .into_iter()
-            .map(|image| {
-                Arc::new(ThImage {
-                    handle: image,
-                    device: self.device.clone(),
-                    drop: false,
-                })
+            .map(|image| ThSwapchainImage {
+                handle: image,
+                swapchain: self.clone(),
             })
             .collect::<Vec<_>>())
     }

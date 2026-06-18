@@ -23,7 +23,7 @@ impl ThDevice {
         self: &Arc<ThDevice>,
         size: u64,
         memory_type: u32,
-    ) -> VkResult<ThDeviceMemory> {
+    ) -> VkResult<Arc<ThDeviceMemory>> {
         let memory_info = MemoryAllocateInfo {
             allocation_size: size,
             memory_type_index: memory_type,
@@ -32,10 +32,10 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.allocate_memory(&memory_info, None) }?;
 
-        Ok(ThDeviceMemory {
+        Ok(Arc::new(ThDeviceMemory {
             handle,
             device: self.clone(),
-        })
+        }))
     }
 
     pub fn allocate_memory_buffer(
@@ -43,7 +43,7 @@ impl ThDevice {
         size: u64,
         memory_type: u32,
         buffer: Buffer,
-    ) -> VkResult<ThDeviceMemory> {
+    ) -> VkResult<Arc<ThDeviceMemory>> {
         let mut dedicated_info = MemoryDedicatedAllocateInfo {
             buffer,
             ..Default::default()
@@ -58,10 +58,10 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.allocate_memory(&memory_info, None) }?;
 
-        Ok(ThDeviceMemory {
+        Ok(Arc::new(ThDeviceMemory {
             handle,
             device: self.clone(),
-        })
+        }))
     }
 
     pub fn allocate_memory_buffer_properties(
@@ -69,7 +69,7 @@ impl ThDevice {
         physical_device: &ThPhysicalDevice,
         buffer: &ThBuffer,
         properties: MemoryPropertyFlags,
-    ) -> VkResult<ThDeviceMemory> {
+    ) -> VkResult<Arc<ThDeviceMemory>> {
         let requirements = buffer.memory_requirements();
 
         let memory_type = physical_device
@@ -84,7 +84,7 @@ impl ThDevice {
         size: u64,
         memory_type: u32,
         image: Image,
-    ) -> VkResult<ThDeviceMemory> {
+    ) -> VkResult<Arc<ThDeviceMemory>> {
         let mut dedicated_info = MemoryDedicatedAllocateInfo {
             image,
             ..Default::default()
@@ -99,10 +99,10 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.allocate_memory(&memory_info, None) }?;
 
-        Ok(ThDeviceMemory {
+        Ok(Arc::new(ThDeviceMemory {
             handle,
             device: self.clone(),
-        })
+        }))
     }
 
     pub fn allocate_memory_image_properties(
@@ -110,7 +110,7 @@ impl ThDevice {
         physical_device: &ThPhysicalDevice,
         image: &ThImage,
         properties: MemoryPropertyFlags,
-    ) -> VkResult<ThDeviceMemory> {
+    ) -> VkResult<Arc<ThDeviceMemory>> {
         let requirements = image.memory_requirements();
 
         let memory_type = physical_device

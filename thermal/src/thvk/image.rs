@@ -3,19 +3,35 @@ use std::sync::Arc;
 use ash::{
     VkResult,
     vk::{
-        DeviceMemory, Extent2D, Format, Image, ImageCreateInfo, ImageLayout, ImageType,
-        ImageUsageFlags, MemoryRequirements, SampleCountFlags,
+        Extent2D, Format, Image, ImageCreateInfo, ImageLayout, ImageType, ImageUsageFlags,
+        MemoryPropertyFlags, MemoryRequirements, SampleCountFlags,
     },
 };
 
-use crate::{primitives, thvk::device::ThDevice};
+use crate::{
+    primitives,
+    thvk::{
+        device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandleSource,
+        physical_device::ThPhysicalDevice,
+    },
+};
 
 pub struct ThImage {
     pub handle: Image,
 
     pub device: Arc<ThDevice>,
 
-    pub drop: bool,
+    pub memory: Option<Arc<ThDeviceMemory>>,
+}
+
+impl ThHandleSource<Image> for Arc<ThImage> {
+    fn handle(&self) -> Image {
+        self.handle
+    }
+
+    fn device(&self) -> &Arc<ThDevice> {
+        &self.device
+    }
 }
 
 impl ThDevice {
@@ -45,8 +61,37 @@ impl ThDevice {
         Ok(Arc::new(ThImage {
             handle,
             device: self.clone(),
-            drop: true,
+            memory: None,
         }))
+    }
+
+    pub fn allocate_image(
+        self: &Arc<ThDevice>,
+        physical_device: &ThPhysicalDevice,
+        format: Format,
+        extent: Extent2D,
+        mip_levels: u32,
+        samples: SampleCountFlags,
+        usage: ImageUsageFlags,
+    ) -> VkResult<Arc<ThImage>> {
+        let mut image = self.create_image(
+            format,
+            extent,
+            mip_levels,
+            samples,
+            usage,
+            ImageLayout::UNDEFINED,
+        )?;
+
+        let memory = self.allocate_memory_image_properties(
+            physical_device,
+            &image,
+            MemoryPropertyFlags::DEVICE_LOCAL,
+        )?;
+
+        Arc::get_mut(&mut image).unwrap().bind_memory(memory, 0)?;
+
+        Ok(image)
     }
 }
 
@@ -59,19 +104,21 @@ impl ThImage {
         }
     }
 
-    pub fn bind_memory(&self, memory: DeviceMemory, offset: u64) -> VkResult<()> {
+    pub fn bind_memory(&mut self, memory: Arc<ThDeviceMemory>, offset: u64) -> VkResult<()> {
         unsafe {
             self.device
                 .handle
-                .bind_image_memory(self.handle, memory, offset)
-        }
+                .bind_image_memory(self.handle, memory.handle, offset)
+        }?;
+
+        self.memory = Some(memory);
+
+        Ok(())
     }
 }
 
 impl Drop for ThImage {
     fn drop(&mut self) {
-        if self.drop {
-            unsafe { self.device.handle.destroy_image(self.handle, None) }
-        }
+        unsafe { self.device.handle.destroy_image(self.handle, None) }
     }
 }

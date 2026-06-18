@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use ash::vk::{Buffer, BufferUsageFlags, MemoryPropertyFlags};
 
-use crate::thvk::{
-    device::ThDevice, device_buffer::ThDeviceBuffer, physical_device::ThPhysicalDevice,
-};
+use crate::thvk::{buffer::ThBuffer, device::ThDevice, physical_device::ThPhysicalDevice};
 
 pub struct VertexBuffer<T> {
     physical_device: ThPhysicalDevice,
@@ -13,9 +11,9 @@ pub struct VertexBuffer<T> {
 
     vertices: Vec<T>,
 
-    buffers: Vec<ThDeviceBuffer>,
+    buffers: Vec<ThBuffer>,
 
-    last_buffer: ThDeviceBuffer,
+    last_buffer: ThBuffer,
 
     last_capacity: u64,
 }
@@ -49,11 +47,16 @@ impl<T: Clone> VertexBuffer<T> {
 
         self.vertices.extend_from_slice(slice);
 
-        (self.last_buffer.buffer().handle, index as u32)
+        (self.last_buffer.handle, index as u32)
     }
 
     pub fn flush(&mut self) {
-        self.last_buffer.memory().copy_from(&self.vertices).unwrap();
+        self.last_buffer
+            .memory
+            .as_ref()
+            .unwrap()
+            .copy_from(&self.vertices)
+            .unwrap();
 
         self.vertices.clear();
     }
@@ -78,14 +81,17 @@ impl<T: Clone> VertexBuffer<T> {
         physical_device: &ThPhysicalDevice,
         device: &Arc<ThDevice>,
         capacity: u64,
-    ) -> ThDeviceBuffer {
-        device
-            .allocate_buffer(
-                physical_device,
-                capacity * size_of::<T>() as u64,
-                BufferUsageFlags::VERTEX_BUFFER,
-                MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
-            )
-            .unwrap()
+    ) -> ThBuffer {
+        Arc::into_inner(
+            device
+                .allocate_buffer(
+                    physical_device,
+                    capacity * size_of::<T>() as u64,
+                    BufferUsageFlags::VERTEX_BUFFER,
+                    MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
+                )
+                .unwrap(),
+        )
+        .unwrap()
     }
 }

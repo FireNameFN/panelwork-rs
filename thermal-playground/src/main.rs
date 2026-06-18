@@ -18,8 +18,8 @@ use thermal::{
     },
     primitives, sdl3_util,
     thvk::{
-        descriptor_set::Binding, device::QueueInfo, library::ThLibrary,
-        pipeline::GraphicsPipelineSettings,
+        descriptor_set::Binding, device::QueueInfo, image_view::ThImageViewSource,
+        library::ThLibrary, pipeline::GraphicsPipelineSettings,
     },
 };
 
@@ -225,7 +225,6 @@ fn main() {
         .unwrap();
 
     let image_view = image
-        .image()
         .create_image_view(
             Format::R8G8B8A8_SRGB,
             defaults::MAPPING_RGBA,

@@ -5,8 +5,6 @@ pub mod descriptor_pool;
 pub mod descriptor_set;
 pub mod descriptor_set_layout;
 pub mod device;
-pub mod device_buffer;
-pub mod device_image;
 pub mod device_memory;
 pub mod fence;
 pub mod framebuffer;
