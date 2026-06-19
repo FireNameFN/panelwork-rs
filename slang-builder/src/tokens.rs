@@ -1,6 +1,4 @@
-use std::str::FromStr;
-
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, quote};
 
 pub struct VertexBinding {
@@ -15,7 +13,7 @@ impl ToTokens for VertexBinding {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let binding = self.binding;
         let stride = self.stride;
-        let input_rate = TokenStream::from_str(self.input_rate).unwrap();
+        let input_rate = Ident::new(self.input_rate, Span::call_site());
 
         tokens.extend(quote! {
             VertexInputBindingDescription {
@@ -41,7 +39,7 @@ impl ToTokens for VertexAttribute {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let location = self.location;
         let binding = self.binding;
-        let format = TokenStream::from_str(&self.format).unwrap();
+        let format = Ident::new(&self.format, Span::call_site());
         let offset = self.offset;
 
         tokens.extend(quote! {
@@ -68,9 +66,9 @@ pub struct DescriptorBinding {
 impl ToTokens for DescriptorBinding {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let binding = self.binding;
-        let descriptor_type = TokenStream::from_str(self.descriptor_type).unwrap();
+        let descriptor_type = Ident::new(self.descriptor_type, Span::call_site());
         let descriptor_count = self.descriptor_count;
-        let stage_flags = TokenStream::from_str(self.stage_flags).unwrap();
+        let stage_flags = Ident::new(self.stage_flags, Span::call_site());
 
         tokens.extend(quote! {
             DescriptorSetLayoutBinding {

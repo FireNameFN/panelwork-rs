@@ -537,6 +537,7 @@ name = "thermal-derive"
 version = "0.1.0"
 dependencies = [
  "proc-macro-crate",
+ "proc-macro2",
  "quote",
  "syn",
 ]

@@ -1,7 +1,8 @@
 use proc_macro::TokenStream;
 use proc_macro_crate::FoundCrate;
+use proc_macro2::Span;
 use quote::quote;
-use syn::{Data, DeriveInput};
+use syn::{Data, DeriveInput, Ident};
 
 #[proc_macro_derive(ThDeviceHandle)]
 pub fn th_device_handle_derive(input: TokenStream) -> TokenStream {
@@ -28,8 +29,12 @@ fn impl_th_device_handle(ast: &DeriveInput) -> TokenStream {
     let thermal_crate = proc_macro_crate::crate_name("thermal").unwrap();
 
     let thermal = match &thermal_crate {
-        FoundCrate::Itself => quote! {crate},
-        FoundCrate::Name(name) => quote! {::#name},
+        FoundCrate::Itself => quote!(crate),
+        FoundCrate::Name(name) => {
+            let ident = Ident::new(name, Span::call_site());
+
+            quote!(::#ident)
+        }
     };
 
     let generated = quote! {

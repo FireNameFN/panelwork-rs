@@ -1,6 +1,6 @@
-use std::{str::FromStr, sync::LazyLock};
+use std::sync::LazyLock;
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use regex::Regex;
 use spirv_cross2::{
@@ -34,22 +34,13 @@ pub fn reflect(code: &[u8], content: String, name: &str) -> TokenStream {
 
     let descriptor_sets = get_descriptors(&compiler, &resources);
 
-    let name_upper = TokenStream::from_str(&name.to_ascii_uppercase()).unwrap();
+    let name_upper = Ident::new(&name.to_ascii_uppercase(), Span::call_site());
 
     let spv_path = format!("bin/{}.spv", name);
 
     let bindings = vertex_input.0;
 
     let attributes = vertex_input.1;
-
-    let descriptor_bindings = descriptor_sets
-        .iter()
-        .map(|set| {
-            quote! {
-                &[#(#set),*]
-            }
-        })
-        .collect::<Vec<_>>();
 
     quote! {
         pub const #name_upper: CompiledShader = CompiledShader {
@@ -59,7 +50,7 @@ pub fn reflect(code: &[u8], content: String, name: &str) -> TokenStream {
 
             vertex_attributes: &[#(#attributes),*],
 
-            set_layouts: &[#(#descriptor_bindings),*],
+            set_layouts: &[#(&[#(#descriptor_sets),*]),*],
         };
     }
 }
