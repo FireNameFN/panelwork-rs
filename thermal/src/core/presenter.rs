@@ -139,11 +139,13 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
 
         self.images = swapchain.images()?;
 
-        self.present_semaphores = self
-            .images
-            .iter()
-            .map(|_| self.queue.device().create_semaphore())
-            .collect::<VkResult<Vec<_>>>()?;
+        self.present_semaphores.reserve(self.images.len());
+
+        for _ in self.present_semaphores.len()..self.images.len() {
+            let semaphore = self.queue.device().create_semaphore()?;
+
+            self.present_semaphores.push(semaphore);
+        }
 
         self.swapchain = Some(swapchain);
 

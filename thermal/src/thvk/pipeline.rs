@@ -9,23 +9,21 @@ use ash::{
         PipelineInputAssemblyStateCreateInfo, PipelineMultisampleStateCreateInfo,
         PipelineRasterizationStateCreateInfo, PipelineShaderStageCreateInfo,
         PipelineVertexInputStateCreateInfo, PipelineViewportStateCreateInfo, PrimitiveTopology,
-        RenderPass, SampleCountFlags, ShaderStageFlags, VertexInputAttributeDescription,
-        VertexInputBindingDescription,
+        RenderPass, SampleCountFlags, ShaderModule, ShaderStageFlags,
+        VertexInputAttributeDescription, VertexInputBindingDescription,
     },
 };
 
 use crate::thvk::{
+    device::ThDevice,
     handle::{ThDeviceHandle, ThHandle},
     pipeline_layout::ThPipelineLayout,
-    shader_module::ThShaderModule,
 };
 
 pub struct ThPipeline {
     handle: Pipeline,
 
     layout: Arc<ThPipelineLayout>,
-
-    _shader_modules: [Arc<ThShaderModule>; 2],
 }
 
 impl ThHandle<Pipeline> for ThPipeline {
@@ -35,15 +33,15 @@ impl ThHandle<Pipeline> for ThPipeline {
 }
 
 impl ThDeviceHandle<Pipeline> for ThPipeline {
-    fn device(&self) -> &Arc<super::device::ThDevice> {
+    fn device(&self) -> &Arc<ThDevice> {
         &self.layout.device()
     }
 }
 
 pub struct GraphicsPipelineSettings<'a> {
-    pub vertex_shader: Arc<ThShaderModule>,
+    pub vertex_shader: ShaderModule,
 
-    pub fragment_shader: Arc<ThShaderModule>,
+    pub fragment_shader: ShaderModule,
 
     pub vertex_bindings: &'a [VertexInputBindingDescription],
 
@@ -63,13 +61,13 @@ impl ThPipelineLayout {
         let stages_info = [
             PipelineShaderStageCreateInfo {
                 stage: ShaderStageFlags::VERTEX,
-                module: settings.vertex_shader.handle(),
+                module: settings.vertex_shader,
                 p_name: c"main".as_ptr(),
                 ..Default::default()
             },
             PipelineShaderStageCreateInfo {
                 stage: ShaderStageFlags::FRAGMENT,
-                module: settings.fragment_shader.handle(),
+                module: settings.fragment_shader,
                 p_name: c"main".as_ptr(),
                 ..Default::default()
             },
@@ -162,7 +160,6 @@ impl ThPipelineLayout {
         Ok(ThPipeline {
             handle: handles[0],
             layout: self.clone(),
-            _shader_modules: [settings.vertex_shader, settings.fragment_shader],
         })
     }
 }

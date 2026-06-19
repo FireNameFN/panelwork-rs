@@ -9,7 +9,7 @@ impl ThDevice {
     pub fn create_compiled_shader(
         self: &Arc<ThDevice>,
         shader: &CompiledShader,
-    ) -> VkResult<Arc<ThShaderModule>> {
+    ) -> VkResult<ThShaderModule> {
         self.create_shader_module(shader.code)
     }
 }

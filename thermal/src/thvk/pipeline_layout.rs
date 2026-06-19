@@ -22,9 +22,11 @@ pub struct ThPipelineLayout {
 impl ThDevice {
     pub fn create_pipeline_layout(
         self: &Arc<ThDevice>,
-        set_layouts: Vec<Arc<ThDescriptorSetLayout>>,
+        mut set_layouts: Vec<Arc<ThDescriptorSetLayout>>,
         push_ranges: &[PushConstantRange],
     ) -> VkResult<Arc<ThPipelineLayout>> {
+        set_layouts.shrink_to_fit();
+
         let set_layouts_ptr = set_layouts
             .iter()
             .map(|set_layout| set_layout.handle())

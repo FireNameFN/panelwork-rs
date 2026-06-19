@@ -12,7 +12,7 @@ use spirv_cross2::{
 
 use crate::tokens::{DescriptorBinding, VertexAttribute, VertexBinding};
 
-const REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new("// sb/(vertex|instance)").unwrap());
+const RATE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new("// sb/(vertex|instance)").unwrap());
 
 pub fn reflect(code: &[u8], content: String, name: &str) -> TokenStream {
     let (_, words, _) = unsafe { code.align_to::<u32>() };
@@ -85,9 +85,9 @@ fn vertex_input(
 
     inputs.sort_by_key(|input| input.0);
 
-    let captures = REGEX.captures_iter(&content).collect::<Vec<_>>();
+    let captures = RATE_REGEX.captures_iter(&content).collect::<Vec<_>>();
 
-    let sb_iter = if captures.len() == inputs.len() {
+    let rate_iter = if captures.len() == inputs.len() {
         captures
             .iter()
             .map(|capture| match capture.get(1).unwrap().as_str() {
@@ -110,7 +110,7 @@ fn vertex_input(
 
     let mut binding = 0;
 
-    for ((location, input), rate) in inputs.iter().zip(sb_iter) {
+    for ((location, input), rate) in inputs.iter().zip(rate_iter) {
         if cur_rate != rate {
             binding = bindings.len() as u32;
 
@@ -149,25 +149,25 @@ fn get_descriptors(
     compiler: &Compiler<targets::None>,
     resources: &ShaderResources,
 ) -> Vec<Vec<DescriptorBinding>> {
-    let mut ress = vec![];
+    let mut bindings = vec![];
 
-    ress.extend(get_resources(
+    bindings.extend(get_resources(
         compiler,
         resources,
         ResourceType::SampledImage,
         "COMBINED_IMAGE_SAMPLER",
     ));
 
-    ress.sort_by_key(|descriptor| descriptor.set << 16 | descriptor.binding);
+    bindings.sort_by_key(|descriptor| descriptor.set << 16 | descriptor.binding);
 
-    let mut result = vec![];
+    let mut descriptors = vec![];
 
-    let mut ress_iter = ress.iter();
+    let mut bindings_iter = bindings.iter();
 
     let mut set = 0;
 
     loop {
-        let bind = ress_iter
+        let bind = bindings_iter
             .by_ref()
             .take_while(|descriptor| descriptor.set == set)
             .map(|descriptor| DescriptorBinding {
@@ -182,12 +182,12 @@ fn get_descriptors(
             break;
         }
 
-        result.push(bind);
+        descriptors.push(bind);
 
         set += 1;
     }
 
-    result
+    descriptors
 }
 
 struct DescriptorResource {

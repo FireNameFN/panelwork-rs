@@ -160,9 +160,9 @@ fn main() {
         .create_graphics_pipeline(
             render_pass.handle(),
             GraphicsPipelineSettings {
-                vertex_shader: vertex_shader.clone(),
+                vertex_shader: vertex_shader.handle(),
 
-                fragment_shader: solid_shader,
+                fragment_shader: solid_shader.handle(),
 
                 vertex_bindings: thermal::slang::VERTEX.vertex_bindings,
 
@@ -179,9 +179,9 @@ fn main() {
         .create_graphics_pipeline(
             render_pass.handle(),
             GraphicsPipelineSettings {
-                vertex_shader: vertex_shader,
+                vertex_shader: vertex_shader.handle(),
 
-                fragment_shader: texture_shader,
+                fragment_shader: texture_shader.handle(),
 
                 vertex_bindings: thermal::slang::VERTEX.vertex_bindings,
 
