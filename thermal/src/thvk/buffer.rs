@@ -6,10 +6,7 @@ use ash::{
 };
 use thermal_derive::ThDeviceHandle;
 
-use crate::thvk::{
-    device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle,
-    physical_device::ThPhysicalDevice,
-};
+use crate::thvk::{device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle};
 
 #[derive(ThDeviceHandle)]
 pub struct ThBuffer {
@@ -43,15 +40,13 @@ impl ThDevice {
 
     pub fn allocate_buffer(
         self: &Arc<ThDevice>,
-        physical_device: &ThPhysicalDevice,
         size: u64,
         usage: BufferUsageFlags,
         properties: MemoryPropertyFlags,
     ) -> VkResult<Arc<ThBuffer>> {
         let mut buffer = self.create_buffer(size, usage)?;
 
-        let memory =
-            self.allocate_memory_buffer_properties(physical_device, &buffer, properties)?;
+        let memory = self.allocate_memory_buffer_properties(&buffer, properties)?;
 
         Arc::get_mut(&mut buffer).unwrap().bind_memory(memory, 0)?;
 

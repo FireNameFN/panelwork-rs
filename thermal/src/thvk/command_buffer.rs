@@ -10,23 +10,15 @@ use ash::{
         RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, Viewport,
     },
 };
+use thermal_derive::ThHandle;
 
-use crate::thvk::{
-    command_pool::ThCommandPool,
-    device::ThDevice,
-    handle::{ThDeviceHandle, ThHandle},
-};
+use crate::thvk::{command_pool::ThCommandPool, device::ThDevice, handle::ThDeviceHandle};
 
+#[derive(ThHandle)]
 pub struct ThCommandBuffer {
     pub handle: CommandBuffer,
 
     pub command_pool: Arc<ThCommandPool>,
-}
-
-impl ThHandle<CommandBuffer> for ThCommandBuffer {
-    fn handle(&self) -> CommandBuffer {
-        self.handle
-    }
 }
 
 impl ThDeviceHandle<CommandBuffer> for ThCommandBuffer {

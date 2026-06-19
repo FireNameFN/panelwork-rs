@@ -5,6 +5,7 @@ use ash::vk::Handle;
 use crate::thvk::device::ThDevice;
 
 pub use thermal_derive::ThDeviceHandle;
+pub use thermal_derive::ThHandle;
 
 pub trait ThHandle<T: Handle> {
     fn handle(&self) -> T;

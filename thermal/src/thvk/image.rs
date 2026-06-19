@@ -11,10 +11,7 @@ use thermal_derive::ThDeviceHandle;
 
 use crate::{
     primitives,
-    thvk::{
-        device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle,
-        physical_device::ThPhysicalDevice,
-    },
+    thvk::{device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle},
 };
 
 #[derive(ThDeviceHandle)]
@@ -59,7 +56,6 @@ impl ThDevice {
 
     pub fn allocate_image(
         self: &Arc<ThDevice>,
-        physical_device: &ThPhysicalDevice,
         format: Format,
         extent: Extent2D,
         mip_levels: u32,
@@ -75,11 +71,8 @@ impl ThDevice {
             ImageLayout::UNDEFINED,
         )?;
 
-        let memory = self.allocate_memory_image_properties(
-            physical_device,
-            &image,
-            MemoryPropertyFlags::DEVICE_LOCAL,
-        )?;
+        let memory =
+            self.allocate_memory_image_properties(&image, MemoryPropertyFlags::DEVICE_LOCAL)?;
 
         Arc::get_mut(&mut image).unwrap().bind_memory(memory, 0)?;
 

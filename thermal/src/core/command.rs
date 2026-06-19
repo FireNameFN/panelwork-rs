@@ -16,7 +16,6 @@ use crate::{
         fence::ThFence,
         handle::{ThDeviceHandle, ThHandle},
         image::ThImage,
-        physical_device::ThPhysicalDevice,
         queue::ThQueue,
     },
 };
@@ -61,7 +60,6 @@ impl Command {
 
     pub fn create_texture(
         &self,
-        physical_device: &ThPhysicalDevice,
         format: Format,
         mip_levels: u32,
         slice: &[u8],
@@ -70,7 +68,6 @@ impl Command {
         pixel_size: u32,
     ) -> VkResult<Arc<ThImage>> {
         let image = self.command_buffer.device().allocate_image(
-            &physical_device,
             format,
             primitives::extent(width, height),
             mip_levels,
@@ -81,7 +78,6 @@ impl Command {
         let size = width as u64 * height as u64 * pixel_size as u64;
 
         let buffer = self.command_buffer.device().allocate_buffer(
-            &physical_device,
             size,
             BufferUsageFlags::TRANSFER_SRC,
             MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,

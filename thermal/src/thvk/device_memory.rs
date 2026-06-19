@@ -9,10 +9,7 @@ use ash::{
 };
 use thermal_derive::ThDeviceHandle;
 
-use crate::thvk::{
-    buffer::ThBuffer, device::ThDevice, handle::ThHandle, image::ThImage,
-    physical_device::ThPhysicalDevice,
-};
+use crate::thvk::{buffer::ThBuffer, device::ThDevice, handle::ThHandle, image::ThImage};
 
 #[derive(ThDeviceHandle)]
 pub struct ThDeviceMemory {
@@ -69,13 +66,13 @@ impl ThDevice {
 
     pub fn allocate_memory_buffer_properties(
         self: &Arc<ThDevice>,
-        physical_device: &ThPhysicalDevice,
         buffer: &ThBuffer,
         properties: MemoryPropertyFlags,
     ) -> VkResult<Arc<ThDeviceMemory>> {
         let requirements = buffer.memory_requirements();
 
-        let memory_type = physical_device
+        let memory_type = self
+            .physical_device
             .find_memory_type(requirements.memory_type_bits, properties)
             .unwrap();
 
@@ -110,13 +107,13 @@ impl ThDevice {
 
     pub fn allocate_memory_image_properties(
         self: &Arc<ThDevice>,
-        physical_device: &ThPhysicalDevice,
         image: &ThImage,
         properties: MemoryPropertyFlags,
     ) -> VkResult<Arc<ThDeviceMemory>> {
         let requirements = image.memory_requirements();
 
-        let memory_type = physical_device
+        let memory_type = self
+            .physical_device
             .find_memory_type(requirements.memory_type_bits, properties)
             .unwrap();
 

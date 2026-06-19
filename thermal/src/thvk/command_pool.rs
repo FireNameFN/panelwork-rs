@@ -7,24 +7,17 @@ use ash::{
         CommandPoolCreateFlags, CommandPoolCreateInfo, CommandPoolResetFlags,
     },
 };
+use thermal_derive::ThHandle;
 
 use crate::thvk::{
-    command_buffer::ThCommandBuffer,
-    device::ThDevice,
-    handle::{ThDeviceHandle, ThHandle},
-    queue::ThQueue,
+    command_buffer::ThCommandBuffer, device::ThDevice, handle::ThDeviceHandle, queue::ThQueue,
 };
 
+#[derive(ThHandle)]
 pub struct ThCommandPool {
     handle: CommandPool,
 
     queue: ThQueue,
-}
-
-impl ThHandle<CommandPool> for ThCommandPool {
-    fn handle(&self) -> CommandPool {
-        self.handle
-    }
 }
 
 impl ThDeviceHandle<CommandPool> for ThCommandPool {

@@ -7,22 +7,18 @@ use ash::{
         ImageViewType,
     },
 };
+use thermal_derive::ThHandle;
 
 use crate::thvk::{
     device::ThDevice,
-    handle::{ThDeviceHandle, ThHandle, ThSourceHandle},
+    handle::{ThDeviceHandle, ThSourceHandle},
 };
 
+#[derive(ThHandle)]
 pub struct ThImageView<T: ThSourceHandle<Image>> {
     handle: ImageView,
 
     image: T,
-}
-
-impl<T: ThSourceHandle<Image>> ThHandle<ImageView> for ThImageView<T> {
-    fn handle(&self) -> ImageView {
-        self.handle
-    }
 }
 
 impl<T: ThSourceHandle<Image>> ThDeviceHandle<ImageView> for ThImageView<T> {

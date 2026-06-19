@@ -20,16 +20,11 @@ use crate::thvk::{
     pipeline_layout::ThPipelineLayout,
 };
 
+#[derive(ThHandle)]
 pub struct ThPipeline {
     handle: Pipeline,
 
     layout: Arc<ThPipelineLayout>,
-}
-
-impl ThHandle<Pipeline> for ThPipeline {
-    fn handle(&self) -> Pipeline {
-        self.handle
-    }
 }
 
 impl ThDeviceHandle<Pipeline> for ThPipeline {

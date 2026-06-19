@@ -224,7 +224,7 @@ fn main() {
     let command = Command::new(queue.clone()).unwrap();
 
     let image = command
-        .create_texture(&physical_device, Format::R8G8B8A8_SRGB, 1, bytes, 48, 48, 4)
+        .create_texture(Format::R8G8B8A8_SRGB, 1, bytes, 48, 48, 4)
         .unwrap();
 
     let image_view = image
@@ -244,7 +244,7 @@ fn main() {
         )]],
     );
 
-    let mut vertex_buffer = VertexBuffer::<(f32, f32)>::new(physical_device.clone(), device, 32);
+    let mut vertex_buffer = VertexBuffer::<(f32, f32)>::new(device, 32);
 
     let (buffer, _) = vertex_buffer.add(&[
         (-0.5, -0.5),
@@ -264,8 +264,7 @@ fn main() {
 
     let surface = instance.create_sdl3_surface(window.raw()).unwrap();
 
-    let mut presenter =
-        Presenter::new(physical_device.clone(), queue.clone(), surface.clone()).unwrap();
+    let mut presenter = Presenter::new(queue.clone(), surface.clone()).unwrap();
 
     presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
 

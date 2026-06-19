@@ -9,7 +9,6 @@ use crate::{
     primitives,
     thvk::{
         handle::{ThDeviceHandle, ThHandle},
-        physical_device::ThPhysicalDevice,
         queue::ThQueue,
         semaphore::ThSemaphore,
         swapchain::{ThSwapchain, ThSwapchainImage},
@@ -17,8 +16,6 @@ use crate::{
 };
 
 pub struct Presenter<T: ThHandle<SurfaceKHR>> {
-    physical_device: ThPhysicalDevice,
-
     queue: ThQueue,
 
     surface: T,
@@ -43,11 +40,10 @@ pub struct Presenter<T: ThHandle<SurfaceKHR>> {
 }
 
 impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
-    pub fn new(physical_device: ThPhysicalDevice, queue: ThQueue, surface: T) -> VkResult<Self> {
+    pub fn new(queue: ThQueue, surface: T) -> VkResult<Self> {
         let semaphore = queue.device().create_semaphore()?;
 
         Ok(Self {
-            physical_device: physical_device,
             queue: queue,
             surface,
             semaphore: semaphore,
@@ -60,10 +56,6 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
             present_mode: PresentModeKHR::IMMEDIATE,
             swapchain: None,
         })
-    }
-
-    pub fn physical_device(&self) -> &ThPhysicalDevice {
-        &self.physical_device
     }
 
     pub fn queue(&self) -> &ThQueue {
@@ -112,6 +104,8 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
 
     pub fn set_size(&mut self, width: u32, height: u32) -> VkResult<()> {
         let capabilities = self
+            .queue
+            .device()
             .physical_device
             .surface_capabilities(self.surface.handle())?;
 

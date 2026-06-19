@@ -2,13 +2,9 @@ use std::sync::Arc;
 
 use ash::vk::{Buffer, BufferUsageFlags, MemoryPropertyFlags};
 
-use crate::thvk::{
-    buffer::ThBuffer, device::ThDevice, handle::ThHandle, physical_device::ThPhysicalDevice,
-};
+use crate::thvk::{buffer::ThBuffer, device::ThDevice, handle::ThHandle};
 
 pub struct VertexBuffer<T: Clone> {
-    physical_device: ThPhysicalDevice,
-
     device: Arc<ThDevice>,
 
     vertices: Vec<T>,
@@ -21,21 +17,16 @@ pub struct VertexBuffer<T: Clone> {
 }
 
 impl<T: Clone> VertexBuffer<T> {
-    pub fn new(physical_device: ThPhysicalDevice, device: Arc<ThDevice>, capacity: u64) -> Self {
-        let buffer = Self::create_buffer(&physical_device, &device, capacity);
+    pub fn new(device: Arc<ThDevice>, capacity: u64) -> Self {
+        let buffer = Self::create_buffer(&device, capacity);
 
         Self {
-            physical_device,
             device,
             vertices: vec![],
             old_buffers: vec![],
             last_buffer: buffer,
             last_capacity: capacity,
         }
-    }
-
-    pub fn physical_device(&self) -> &ThPhysicalDevice {
-        &self.physical_device
     }
 
     pub fn device(&self) -> &Arc<ThDevice> {
@@ -78,7 +69,7 @@ impl<T: Clone> VertexBuffer<T> {
     }
 
     fn grow(&mut self, capacity: u64) {
-        let buffer = Self::create_buffer(&self.physical_device, &self.device, capacity);
+        let buffer = Self::create_buffer(&self.device, capacity);
 
         let old_buffer = std::mem::replace(&mut self.last_buffer, buffer);
 
@@ -87,15 +78,10 @@ impl<T: Clone> VertexBuffer<T> {
         self.last_capacity = capacity;
     }
 
-    fn create_buffer(
-        physical_device: &ThPhysicalDevice,
-        device: &Arc<ThDevice>,
-        capacity: u64,
-    ) -> ThBuffer {
+    fn create_buffer(device: &Arc<ThDevice>, capacity: u64) -> ThBuffer {
         Arc::into_inner(
             device
                 .allocate_buffer(
-                    physical_device,
                     capacity * size_of::<T>() as u64,
                     BufferUsageFlags::VERTEX_BUFFER,
                     MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,

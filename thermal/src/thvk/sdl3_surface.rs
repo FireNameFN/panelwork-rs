@@ -2,19 +2,15 @@ use std::{ptr, sync::Arc};
 
 use ash::vk::{Handle, SurfaceKHR};
 use sdl3_sys::video::SDL_Window;
+use thermal_derive::ThHandle;
 
-use crate::thvk::{handle::ThHandle, instance::ThInstance};
+use crate::thvk::instance::ThInstance;
 
+#[derive(ThHandle)]
 pub struct ThSdl3Surface {
     handle: SurfaceKHR,
 
     instance: Arc<ThInstance>,
-}
-
-impl ThHandle<SurfaceKHR> for Arc<ThSdl3Surface> {
-    fn handle(&self) -> SurfaceKHR {
-        self.handle
-    }
 }
 
 impl ThSdl3Surface {

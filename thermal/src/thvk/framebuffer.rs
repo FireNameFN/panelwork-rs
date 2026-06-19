@@ -11,16 +11,11 @@ use crate::thvk::{
     render_pass::ThRenderPass,
 };
 
+#[derive(ThHandle)]
 pub struct ThFramebuffer {
     handle: Framebuffer,
 
     render_pass: Arc<ThRenderPass>,
-}
-
-impl ThHandle<Framebuffer> for ThFramebuffer {
-    fn handle(&self) -> Framebuffer {
-        self.handle
-    }
 }
 
 impl ThDeviceHandle<Framebuffer> for ThFramebuffer {

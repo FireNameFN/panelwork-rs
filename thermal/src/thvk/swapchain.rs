@@ -8,11 +8,9 @@ use ash::{
         SwapchainCreateInfoKHR, SwapchainKHR,
     },
 };
+use thermal_derive::ThHandle;
 
-use crate::thvk::{
-    device::ThDevice,
-    handle::{ThDeviceHandle, ThHandle},
-};
+use crate::thvk::{device::ThDevice, handle::ThDeviceHandle};
 
 #[derive(ThDeviceHandle)]
 pub struct ThSwapchain {
@@ -21,17 +19,11 @@ pub struct ThSwapchain {
     device: Arc<ThDevice>,
 }
 
-#[derive(Clone)]
+#[derive(ThHandle, Clone)]
 pub struct ThSwapchainImage {
     handle: Image,
 
     swapchain: Arc<ThSwapchain>,
-}
-
-impl ThHandle<Image> for ThSwapchainImage {
-    fn handle(&self) -> Image {
-        self.handle
-    }
 }
 
 impl ThDeviceHandle<Image> for ThSwapchainImage {
