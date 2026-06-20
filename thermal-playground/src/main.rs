@@ -16,7 +16,11 @@ use thermal::{
         physical_device::ThPhysicalDeviceIteratorExt, result::SwapchainResultExt,
         sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
     },
-    primitives, sdl3_util,
+    primitives::{
+        vertex,
+        vk::{rect, viewport},
+    },
+    sdl3_util,
     thvk::{
         descriptor_set::Binding, device::QueueInfo, handle::ThHandle,
         image_view::ThImageViewSource, library::ThLibrary, pipeline::GraphicsPipelineSettings,
@@ -244,15 +248,15 @@ fn main() {
         )]],
     );
 
-    let mut vertex_buffer = VertexBuffer::<(f32, f32)>::new(device, 32);
+    let mut vertex_buffer = VertexBuffer::new(device, 32);
 
     let (buffer, _) = vertex_buffer.add(&[
-        (-0.5, -0.5),
-        (0.5, -0.5),
-        (-0.5, 0.5),
-        (0.5, -0.5),
-        (-0.5, 0.5),
-        (0.5, 0.5),
+        vertex(-0.5, -0.5, 0., 0.),
+        vertex(0.5, -0.5, 1., 0.),
+        vertex(-0.5, 0.5, 0., 1.),
+        vertex(0.5, -0.5, 1., 0.),
+        vertex(-0.5, 0.5, 0., 1.),
+        vertex(0.5, 0.5, 1., 1.),
     ]);
 
     let window = video
@@ -378,7 +382,7 @@ fn main() {
         command_buffer.cmd_begin_render_pass(
             render_pass.handle(),
             framebuffers[index as usize].handle(),
-            primitives::rect(0, 0, presenter.width(), presenter.height()),
+            rect(0, 0, presenter.width(), presenter.height()),
             &[ClearValue {
                 color: ClearColorValue {
                     float32: [0., 1., 0., 1.],
@@ -387,19 +391,14 @@ fn main() {
             SubpassContents::INLINE,
         );
 
-        command_buffer.cmd_set_viewport(primitives::viewport(
+        command_buffer.cmd_set_viewport(viewport(
             0.,
             0.,
             presenter.width() as f32,
             presenter.height() as f32,
         ));
 
-        command_buffer.cmd_set_scissor(primitives::rect(
-            0,
-            0,
-            presenter.width(),
-            presenter.height(),
-        ));
+        command_buffer.cmd_set_scissor(rect(0, 0, presenter.width(), presenter.height()));
 
         command_buffer.cmd_bind_vertex_buffers(0, &[buffer], &[0]);
 

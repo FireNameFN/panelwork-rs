@@ -61,9 +61,8 @@ fn vertex_input(
     resources: &ShaderResources,
     content: String,
 ) -> (Vec<VertexBinding>, Vec<VertexAttribute>) {
-    #[derive(Clone, PartialEq)]
+    #[derive(Copy, Clone, Eq, PartialEq)]
     enum Rate {
-        Invalid,
         Vertex,
         Instance,
     }
@@ -100,19 +99,19 @@ fn vertex_input(
     } else if captures.is_empty() {
         vec![Rate::Vertex; inputs.len()]
     } else {
-        panic!("wrong count of sb")
+        panic!("wrong count of rates")
     };
 
     let mut bindings = Vec::with_capacity(inputs.len());
 
     let mut attributes = Vec::with_capacity(inputs.len());
 
-    let mut cur_rate = Rate::Invalid;
+    let mut cur_rate = None;
 
     let mut binding = 0;
 
     for ((location, input), rate) in inputs.iter().zip(rate_iter) {
-        if cur_rate != rate {
+        if cur_rate != Some(rate) {
             binding = bindings.len() as u32;
 
             bindings.push(VertexBinding {
@@ -121,11 +120,10 @@ fn vertex_input(
                 input_rate: match rate {
                     Rate::Vertex => "VERTEX",
                     Rate::Instance => "INSTANCE",
-                    _ => unreachable!(),
                 },
             });
 
-            cur_rate = rate;
+            cur_rate = Some(rate);
         }
 
         let (format, size) =

@@ -10,7 +10,8 @@ use ash::{
 };
 
 use crate::{
-    defaults, primitives,
+    defaults,
+    primitives::vk::{extent, extent3d},
     thvk::{
         command_buffer::ThCommandBuffer,
         fence::ThFence,
@@ -69,7 +70,7 @@ impl Command {
     ) -> VkResult<Arc<ThImage>> {
         let image = self.command_buffer.device().allocate_image(
             format,
-            primitives::extent(width, height),
+            extent(width, height),
             mip_levels,
             SampleCountFlags::TYPE_1,
             ImageUsageFlags::TRANSFER_DST | ImageUsageFlags::SAMPLED,
@@ -89,7 +90,7 @@ impl Command {
             buffer_row_length: width,
             buffer_image_height: height,
             image_subresource: defaults::SUBRESOURCE_COLOR_LAYER,
-            image_extent: primitives::extent3d(width, height, 1),
+            image_extent: extent3d(width, height, 1),
             ..Default::default()
         };
 

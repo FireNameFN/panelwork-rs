@@ -1,5 +1,6 @@
 struct VSInput {
   float2 position; // sb/vertex
+  float2 uv;       // sb/vertex
 }
 
 struct VSOutput {
@@ -10,7 +11,7 @@ struct VSOutput {
 
 [shader("vertex")]
 VSOutput main(VSInput input) {
-  VSOutput output = { float4(1, 1, 1, 1), input.position,
+  VSOutput output = { float4(1, 1, 1, 1), input.uv,
                       float4(input.position, 0, 1) };
 
   return output;

@@ -1,4 +1,4 @@
 ParameterBlock<Sampler2D> sampler;
 
 [shader("pixel")]
-float4 main(float4 color, float2 uv) { return sampler.Sample(uv + 0.5); }
+float4 main(float4 color, float2 uv) { return sampler.Sample(uv); }

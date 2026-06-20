@@ -10,7 +10,7 @@ use ash::{
 use thermal_derive::ThDeviceHandle;
 
 use crate::{
-    primitives,
+    primitives::vk::extent3d,
     thvk::{device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle},
 };
 
@@ -36,7 +36,7 @@ impl ThDevice {
         let image_info = ImageCreateInfo {
             image_type: ImageType::TYPE_2D,
             format,
-            extent: primitives::extent3d(extent.width, extent.height, 1),
+            extent: extent3d(extent.width, extent.height, 1),
             mip_levels,
             array_layers: 1,
             samples,

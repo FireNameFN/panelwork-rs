@@ -6,7 +6,7 @@ use ash::{
 };
 
 use crate::{
-    primitives,
+    primitives::vk::extent,
     thvk::{
         handle::{ThDeviceHandle, ThHandle},
         queue::ThQueue,
@@ -123,7 +123,7 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
             self.surface.handle(),
             capabilities.min_image_count,
             self.format,
-            primitives::extent(self.width, self.height),
+            extent(self.width, self.height),
             self.usage,
             self.present_mode,
             self.swapchain.as_ref().map(|swapchain| swapchain.handle()),
