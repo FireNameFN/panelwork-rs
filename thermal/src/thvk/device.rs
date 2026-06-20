@@ -58,7 +58,7 @@ impl ThPhysicalDevice {
         Ok(Arc::new(ThDevice {
             handle,
             physical_device: self.clone(),
-            swapchain_device: swapchain_device,
+            swapchain_device,
         }))
     }
 }

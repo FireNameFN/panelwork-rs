@@ -29,7 +29,7 @@ pub struct ThPipeline {
 
 impl ThDeviceHandle<Pipeline> for ThPipeline {
     fn device(&self) -> &Arc<ThDevice> {
-        &self.layout.device()
+        self.layout.device()
     }
 }
 
@@ -139,7 +139,7 @@ impl ThPipelineLayout {
             p_color_blend_state: &blend_info,
             p_dynamic_state: &dynamic_info,
             layout: self.handle(),
-            render_pass: render_pass,
+            render_pass,
             ..Default::default()
         };
 

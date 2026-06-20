@@ -44,9 +44,9 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
         let semaphore = queue.device().create_semaphore()?;
 
         Ok(Self {
-            queue: queue,
+            queue,
             surface,
-            semaphore: semaphore,
+            semaphore,
             images: vec![],
             present_semaphores: vec![],
             width: 0,

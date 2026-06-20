@@ -56,7 +56,7 @@ impl ThDevice {
                     dst_set: *descriptor_set,
                     dst_binding: i as u32,
                     descriptor_count: 1,
-                    descriptor_type: descriptor_type,
+                    descriptor_type,
                     p_image_info: descriptor_image_ptr,
                     p_buffer_info: descriptor_buffer_ptr,
                     ..Default::default()

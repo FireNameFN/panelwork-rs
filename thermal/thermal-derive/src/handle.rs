@@ -9,7 +9,7 @@ pub fn impl_th_handle(ast: &DeriveInput) -> TokenStream {
 
     let ty = util::get_handle_ty(&ast.data);
 
-    let thermal = &*util::THERMAL_CRATE;
+    let thermal = util::get_thermal_crate();
 
     let (generics_impl, generics_ty, generics_where) = ast.generics.split_for_impl();
 

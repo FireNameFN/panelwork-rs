@@ -12,7 +12,8 @@ use spirv_cross2::{
 
 use crate::tokens::{DescriptorBinding, VertexAttribute, VertexBinding};
 
-const RATE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new("// sb/(vertex|instance)").unwrap());
+static RATE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("// sb/(vertex|instance)").unwrap());
 
 pub fn reflect(code: &[u8], content: String, name: &str) -> TokenStream {
     let (_, words, _) = unsafe { code.align_to::<u32>() };
@@ -96,7 +97,7 @@ fn vertex_input(
                 _ => unreachable!(),
             })
             .collect()
-    } else if captures.len() == 0 {
+    } else if captures.is_empty() {
         vec![Rate::Vertex; inputs.len()]
     } else {
         panic!("wrong count of sb")
@@ -115,7 +116,7 @@ fn vertex_input(
             binding = bindings.len() as u32;
 
             bindings.push(VertexBinding {
-                binding: binding,
+                binding,
                 stride: 0,
                 input_rate: match rate {
                     Rate::Vertex => "VERTEX",
@@ -151,12 +152,13 @@ fn get_descriptors(
 ) -> Vec<Vec<DescriptorBinding>> {
     let mut bindings = vec![];
 
-    bindings.extend(get_resources(
+    get_resources(
         compiler,
         resources,
         ResourceType::SampledImage,
         "COMBINED_IMAGE_SAMPLER",
-    ));
+        &mut bindings,
+    );
 
     bindings.sort_by_key(|descriptor| descriptor.set << 16 | descriptor.binding);
 
@@ -196,30 +198,33 @@ struct DescriptorResource {
     descriptor_type: &'static str,
 }
 
-fn get_resources<'a>(
+fn get_resources(
     compiler: &Compiler<targets::None>,
     resources: &ShaderResources,
     resource_type: ResourceType,
     descriptor_type: &'static str,
-) -> impl Iterator<Item = DescriptorResource> {
-    resources
-        .resources_for_type(resource_type)
-        .unwrap()
-        .map(move |resource| DescriptorResource {
-            set: compiler
-                .decoration(resource.id, Decoration::DescriptorSet)
-                .unwrap()
-                .unwrap()
-                .as_literal()
-                .unwrap(),
-            binding: compiler
-                .decoration(resource.id, Decoration::Binding)
-                .unwrap()
-                .unwrap()
-                .as_literal()
-                .unwrap(),
-            descriptor_type,
-        })
+    vec: &mut Vec<DescriptorResource>,
+) {
+    vec.extend(
+        resources
+            .resources_for_type(resource_type)
+            .unwrap()
+            .map(move |resource| DescriptorResource {
+                set: compiler
+                    .decoration(resource.id, Decoration::DescriptorSet)
+                    .unwrap()
+                    .unwrap()
+                    .as_literal()
+                    .unwrap(),
+                binding: compiler
+                    .decoration(resource.id, Decoration::Binding)
+                    .unwrap()
+                    .unwrap()
+                    .as_literal()
+                    .unwrap(),
+                descriptor_type,
+            }),
+    );
 }
 
 fn to_format(type_inner: TypeInner) -> (String, u32) {

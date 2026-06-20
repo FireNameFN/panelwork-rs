@@ -53,7 +53,7 @@ impl ThLibrary {
 
         Ok(Arc::new(ThInstance {
             handle,
-            surface_instance: surface_instance,
+            surface_instance,
             library: self.clone(),
         }))
     }

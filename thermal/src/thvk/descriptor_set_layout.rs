@@ -32,7 +32,7 @@ impl ThDevice {
         }?;
 
         Ok(Arc::new(ThDescriptorSetLayout {
-            handle: handle,
+            handle,
             device: self.clone(),
         }))
     }

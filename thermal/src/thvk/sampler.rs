@@ -33,7 +33,7 @@ impl ThDevice {
         let handle = unsafe { self.handle.create_sampler(&sampler_info, None) }?;
 
         Ok(ThSampler {
-            handle: handle,
+            handle,
             device: self.clone(),
         })
     }

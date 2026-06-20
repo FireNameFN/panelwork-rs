@@ -46,9 +46,9 @@ impl ThDevice {
         }?;
 
         Ok(Arc::new(ThPipelineLayout {
-            handle: handle,
+            handle,
             device: self.clone(),
-            set_layouts: set_layouts,
+            set_layouts,
         }))
     }
 }

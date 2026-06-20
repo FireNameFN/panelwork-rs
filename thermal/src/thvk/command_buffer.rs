@@ -171,11 +171,11 @@ impl ThCommandBuffer {
         let image_barrier = ImageMemoryBarrier {
             src_access_mask: src_access,
             dst_access_mask: dst_access,
-            old_layout: old_layout,
-            new_layout: new_layout,
+            old_layout,
+            new_layout,
             src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
             dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            image: image,
+            image,
             subresource_range: ImageSubresourceRange {
                 aspect_mask: ImageAspectFlags::COLOR,
                 base_mip_level: 0,

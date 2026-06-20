@@ -127,7 +127,7 @@ impl ThDeviceMemory {
             return Ok(());
         }
 
-        let size = slice.len() * size_of::<T>();
+        let size = std::mem::size_of_val(slice);
 
         let mapping = unsafe {
             self.device.handle.map_memory(

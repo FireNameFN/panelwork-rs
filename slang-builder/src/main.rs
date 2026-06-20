@@ -10,7 +10,7 @@ mod reflect;
 mod tokens;
 
 fn main() {
-    let crate_dir = PathBuf::from_str(&env::args().skip(1).next().unwrap()).unwrap();
+    let crate_dir = PathBuf::from_str(&env::args().nth(1).unwrap()).unwrap();
 
     let dir = crate_dir.join("src").join("slang");
 
@@ -19,7 +19,7 @@ fn main() {
     let mut old_files = fs::read_dir(&bin_dir)
         .unwrap()
         .map(|file| file.unwrap().path())
-        .filter(|file| file.extension().map_or(false, |ext| ext == "spv"))
+        .filter(|file| file.extension().is_some_and(|ext| ext == "spv"))
         .collect::<Vec<_>>();
 
     let global_session = GlobalSession::new().unwrap();
@@ -56,7 +56,7 @@ fn main() {
     for file in fs::read_dir(dir.join("src"))
         .unwrap()
         .map(|file| file.unwrap().path())
-        .filter(|file| file.extension().map_or(false, |ext| ext == "slang"))
+        .filter(|file| file.extension().is_some_and(|ext| ext == "slang"))
     {
         let content = fs::read_to_string(file.clone()).unwrap();
 

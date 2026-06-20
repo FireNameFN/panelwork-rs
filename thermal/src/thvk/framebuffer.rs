@@ -35,8 +35,8 @@ impl ThRenderPass {
             render_pass: self.handle(),
             attachment_count: attachments.len() as u32,
             p_attachments: attachments.as_ptr(),
-            width: width,
-            height: height,
+            width,
+            height,
             layers: 1,
             ..Default::default()
         };

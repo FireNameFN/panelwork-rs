@@ -9,7 +9,7 @@ pub fn impl_th_device_handle(ast: &DeriveInput) -> TokenStream {
 
     let ty = util::get_handle_ty(&ast.data);
 
-    let thermal = &*util::THERMAL_CRATE;
+    let thermal = util::get_thermal_crate();
 
     let generated = quote! {
         impl #thermal::thvk::handle::ThHandle<#ty> for #name {
