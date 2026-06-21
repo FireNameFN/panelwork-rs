@@ -10,7 +10,7 @@ use ash::vk::{
 use png::{Decoder, Transformations};
 use sdl3::event::{Event, WindowEvent};
 use thermal::{
-    core::{command::Command, presenter::Presenter, vertex_buffer::VertexBuffer},
+    core::{atlas::Atlas, command::Command, presenter::Presenter, vertex_buffer::VertexBuffer},
     defaults,
     ext::{
         physical_device::ThPhysicalDeviceIteratorExt, result::SwapchainResultExt,
@@ -32,6 +32,9 @@ const IMAGE: &[u8] = include_bytes!("../resources/OverGreen.png");
 
 #[allow(dead_code)]
 const IMAGE2: &[u8] = include_bytes!("../resources/dennis.png");
+
+#[allow(dead_code)]
+const TEXTURES: &[&[u8]] = include!(concat!(env!("OUT_DIR"), "/textures.rs"));
 
 fn main() {
     println!("Hello, world!");
@@ -207,28 +210,42 @@ fn main() {
         )
         .unwrap();
 
+    let descriptor_sets2 = descriptor_pool
+        .allocate_descriptor_set(
+            &descriptor_set_layouts
+                .iter()
+                .map(|set_layout| set_layout.handle())
+                .collect::<Vec<_>>(),
+        )
+        .unwrap();
+
     let sampler = device
         .create_sampler(Filter::NEAREST, SamplerAddressMode::CLAMP_TO_BORDER)
         .unwrap();
 
-    let reader = Cursor::new(IMAGE2);
-
-    let mut decoder = Decoder::new(reader);
+    let mut decoder = Decoder::new(Cursor::new(IMAGE2));
 
     decoder.set_transformations(Transformations::ALPHA);
 
     let mut reader = decoder.read_info().unwrap();
 
-    let mut buf = vec![0; reader.output_buffer_size().unwrap()];
+    let mut decoder_buffer = vec![0; reader.output_buffer_size().unwrap()];
 
-    let frame = reader.next_frame(&mut buf).unwrap();
+    let frame = reader.next_frame(&mut decoder_buffer).unwrap();
 
-    let bytes = &buf[..frame.buffer_size()];
+    let image_data = &decoder_buffer[..frame.buffer_size()];
 
     let command = Command::new(queue.clone()).unwrap();
 
     let image = command
-        .create_texture(Format::R8G8B8A8_SRGB, 1, bytes, 48, 48, 4)
+        .create_texture(
+            Format::R8G8B8A8_SRGB,
+            1,
+            image_data,
+            frame.width,
+            frame.height,
+            4,
+        )
         .unwrap();
 
     let image_view = image
@@ -239,13 +256,50 @@ fn main() {
         )
         .unwrap();
 
+    let mut atlas = Atlas::new(512, 512, 4);
+
+    for texture in TEXTURES {
+        let mut decoder = Decoder::new(Cursor::new(texture));
+
+        decoder.set_transformations(Transformations::ALPHA);
+
+        let mut reader = decoder.read_info().unwrap();
+
+        let mut decoder_buffer = vec![0; reader.output_buffer_size().unwrap()];
+
+        let frame = reader.next_frame(&mut decoder_buffer).unwrap();
+
+        let image_data = &decoder_buffer[..frame.buffer_size()];
+
+        atlas.add(image_data, frame.width, frame.height);
+    }
+
+    let atlas_texture = atlas
+        .create_texture(command, Format::R8G8B8A8_SRGB, 1)
+        .unwrap();
+
+    let atlas_view = atlas_texture
+        .create_image_view(
+            Format::R8G8B8A8_SRGB,
+            defaults::MAPPING_RGBA,
+            defaults::SUBRESOURCE_COLOR,
+        )
+        .unwrap();
+
     device.update_descriptor_sets(
-        &descriptor_sets,
-        &[&[Binding::CombinedImageSampler(
-            sampler.handle(),
-            image_view.handle(),
-            ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-        )]],
+        &[descriptor_sets.clone(), descriptor_sets2.clone()].concat(),
+        &[
+            &[Binding::CombinedImageSampler(
+                sampler.handle(),
+                image_view.handle(),
+                ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            )],
+            &[Binding::CombinedImageSampler(
+                sampler.handle(),
+                atlas_view.handle(),
+                ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            )],
+        ],
     );
 
     let mut vertex_buffer = VertexBuffer::new(device, 32);
@@ -272,41 +326,20 @@ fn main() {
 
     presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
 
-    presenter.present_mode = physical_device
+    presenter.present_mode = *physical_device
         .surface_present_modes(surface.handle())
         .unwrap()
-        .into_iter()
+        .iter()
         .min()
         .unwrap();
 
-    presenter.set_size(1280, 720).unwrap();
+    let mut image_views = vec![];
 
-    let mut image_views = presenter
-        .images()
-        .iter()
-        .map(|image| {
-            image
-                .create_image_view(
-                    Format::B8G8R8A8_SRGB,
-                    defaults::MAPPING_RGBA,
-                    defaults::SUBRESOURCE_COLOR,
-                )
-                .unwrap()
-        })
-        .collect::<Vec<_>>();
-
-    let mut framebuffers = image_views
-        .iter()
-        .map(|image_view| {
-            render_pass
-                .create_framebuffer(&[image_view.handle()], 1280, 720)
-                .unwrap()
-        })
-        .collect::<Vec<_>>();
+    let mut framebuffers = vec![];
 
     let mut event_pump = sdl.event_pump().unwrap();
 
-    let mut resize = false;
+    let mut resize = true;
 
     'outer: loop {
         let mut event = event_pump.wait_event();
@@ -348,7 +381,7 @@ fn main() {
                         )
                         .unwrap()
                 })
-                .collect::<Vec<_>>();
+                .collect();
 
             framebuffers = image_views
                 .iter()
@@ -361,18 +394,15 @@ fn main() {
                         )
                         .unwrap()
                 })
-                .collect::<Vec<_>>();
+                .collect();
         }
 
-        let (index, _) = match presenter.acquire_next_image(u64::MAX).unwrap_out_of_date() {
-            None => {
-                println!("out of date");
+        let Some((index, _)) = presenter.acquire_next_image(u64::MAX).unwrap_out_of_date() else {
+            println!("out of date");
 
-                resize = true;
+            resize = true;
 
-                continue;
-            }
-            Some(ok) => ok,
+            continue;
         };
 
         command_buffer
@@ -408,7 +438,7 @@ fn main() {
             PipelineBindPoint::GRAPHICS,
             texture_pipeline_layout.handle(),
             0,
-            &descriptor_sets,
+            &descriptor_sets2,
         );
 
         command_buffer.cmd_draw(6, 1, 0, 0);

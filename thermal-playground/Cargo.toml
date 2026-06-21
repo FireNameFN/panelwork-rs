@@ -3,8 +3,11 @@ name = "thermal-playground"
 version = "0.1.0"
 edition = "2024"
 
+[build-dependencies]
+quote = "1.0.45"
+
 [dependencies]
 ash = { workspace = true }
 png = "0.18.1"
-sdl3 = { workspace = true }
+sdl3 = "0.18.4"
 thermal = { path = "../thermal", features = ["sdl3"] }

@@ -548,6 +548,7 @@ version = "0.1.0"
 dependencies = [
  "ash",
  "png",
+ "quote",
  "sdl3",
  "thermal",
 ]

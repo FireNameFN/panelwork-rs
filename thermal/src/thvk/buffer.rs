@@ -55,8 +55,8 @@ impl ThDevice {
 }
 
 impl ThBuffer {
-    pub fn memory(&self) -> &Option<Arc<ThDeviceMemory>> {
-        &self.memory
+    pub fn memory(&self) -> Option<&Arc<ThDeviceMemory>> {
+        self.memory.as_ref()
     }
 
     pub fn memory_requirements(&self) -> MemoryRequirements {
