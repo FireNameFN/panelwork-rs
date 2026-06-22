@@ -3,28 +3,27 @@ use std::sync::Arc;
 use ash::{
     VkResult,
     vk::{
-        Extent2D, Format, Image, ImageCreateInfo, ImageLayout, ImageType, ImageUsageFlags,
-        MemoryPropertyFlags, MemoryRequirements, SampleCountFlags,
+        DeviceMemory, Extent2D, Format, Image, ImageCreateInfo, ImageLayout, ImageType,
+        ImageUsageFlags, MemoryPropertyFlags, MemoryRequirements, SampleCountFlags,
     },
 };
-use thermal_derive::ThDeviceHandle;
 
 use crate::{
     primitives::vk::extent3d,
-    thvk::{device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle},
+    thvk::{device::ThDevice, device_memory::ThDeviceMemory, handle::ThDeviceHandle},
 };
 
 #[derive(ThDeviceHandle)]
-pub struct ThImage {
+pub struct ThImage<T: ThDeviceHandle<DeviceMemory>> {
     handle: Image,
 
     device: Arc<ThDevice>,
 
-    memory: Option<Arc<ThDeviceMemory>>,
+    memory: Option<T>,
 }
 
 impl ThDevice {
-    pub fn create_image(
+    pub fn create_image<T: ThDeviceHandle<DeviceMemory>>(
         self: &Arc<ThDevice>,
         format: Format,
         extent: Extent2D,
@@ -32,7 +31,7 @@ impl ThDevice {
         samples: SampleCountFlags,
         usage: ImageUsageFlags,
         layout: ImageLayout,
-    ) -> VkResult<Arc<ThImage>> {
+    ) -> VkResult<ThImage<T>> {
         let image_info = ImageCreateInfo {
             image_type: ImageType::TYPE_2D,
             format,
@@ -47,11 +46,11 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.create_image(&image_info, None) }?;
 
-        Ok(Arc::new(ThImage {
+        Ok(ThImage {
             handle,
             device: self.clone(),
             memory: None,
-        }))
+        })
     }
 
     pub fn allocate_image(
@@ -61,7 +60,7 @@ impl ThDevice {
         mip_levels: u32,
         samples: SampleCountFlags,
         usage: ImageUsageFlags,
-    ) -> VkResult<Arc<ThImage>> {
+    ) -> VkResult<ThImage<ThDeviceMemory>> {
         let mut image = self.create_image(
             format,
             extent,
@@ -74,15 +73,15 @@ impl ThDevice {
         let memory =
             self.allocate_memory_image_properties(&image, MemoryPropertyFlags::DEVICE_LOCAL)?;
 
-        Arc::get_mut(&mut image).unwrap().bind_memory(memory, 0)?;
+        image.bind_memory(memory, 0)?;
 
         Ok(image)
     }
 }
 
-impl ThImage {
-    pub fn memory(&self) -> &Option<Arc<ThDeviceMemory>> {
-        &self.memory
+impl<T: ThDeviceHandle<DeviceMemory>> ThImage<T> {
+    pub fn memory(&self) -> Option<&T> {
+        self.memory.as_ref()
     }
 
     pub fn memory_requirements(&self) -> MemoryRequirements {
@@ -93,7 +92,7 @@ impl ThImage {
         }
     }
 
-    pub fn bind_memory(&mut self, memory: Arc<ThDeviceMemory>, offset: u64) -> VkResult<()> {
+    pub fn bind_memory(&mut self, memory: T, offset: u64) -> VkResult<()> {
         unsafe {
             self.device
                 .handle
@@ -106,7 +105,7 @@ impl ThImage {
     }
 }
 
-impl Drop for ThImage {
+impl<T: ThDeviceHandle<DeviceMemory>> Drop for ThImage<T> {
     fn drop(&mut self) {
         unsafe { self.device.handle.destroy_image(self.handle, None) }
     }

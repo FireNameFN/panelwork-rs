@@ -13,8 +13,8 @@ use thermal::{
     core::{atlas::Atlas, command::Command, presenter::Presenter, vertex_buffer::VertexBuffer},
     defaults,
     ext::{
-        physical_device::ThPhysicalDeviceIteratorExt, result::SwapchainResultExt,
-        sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
+        handle::ThHandleDeviceExt, physical_device::ThPhysicalDeviceIteratorExt,
+        result::SwapchainResultExt, sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
     },
     primitives::{
         vertex,
@@ -22,8 +22,14 @@ use thermal::{
     },
     sdl3_util,
     thvk::{
-        descriptor_set::Binding, device::QueueInfo, handle::ThHandle,
-        image_view::ThImageViewSource, library::ThLibrary, pipeline::GraphicsPipelineSettings,
+        descriptor_set::Binding,
+        descriptor_set_layout::ThDescriptorSetLayout,
+        device::QueueInfo,
+        framebuffer::ThRenderPassSource,
+        handle::ThHandle,
+        image_view::ThImageViewSource,
+        library::ThLibrary,
+        pipeline::{GraphicsPipelineSettings, ThPipelineSource},
     },
 };
 
@@ -126,7 +132,8 @@ fn main() {
                 ..Default::default()
             }],
         )
-        .unwrap();
+        .unwrap()
+        .arc();
 
     let descriptor_pool = device
         .create_descriptor_pool(
@@ -156,11 +163,14 @@ fn main() {
         .map(|set| device.create_descriptor_set_layout(set).unwrap())
         .collect::<Vec<_>>();
 
-    let solid_pipeline_layout = device.create_pipeline_layout(vec![], &[]).unwrap();
+    let solid_pipeline_layout = device
+        .create_pipeline_layout::<ThDescriptorSetLayout>(vec![], &[])
+        .unwrap();
 
     let texture_pipeline_layout = device
         .create_pipeline_layout(descriptor_set_layouts.clone(), &[])
-        .unwrap();
+        .unwrap()
+        .arc();
 
     #[allow(unused_variables)]
     let solid_pipeline = solid_pipeline_layout
@@ -183,6 +193,7 @@ fn main() {
         .unwrap();
 
     let texture_pipeline = texture_pipeline_layout
+        .clone()
         .create_graphics_pipeline(
             render_pass.handle(),
             GraphicsPipelineSettings {
@@ -322,16 +333,18 @@ fn main() {
 
     let surface = instance.create_sdl3_surface(window.raw()).unwrap();
 
-    let mut presenter = Presenter::new(queue.clone(), surface.clone()).unwrap();
-
-    presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
-
-    presenter.present_mode = *physical_device
+    let present_mode = *physical_device
         .surface_present_modes(surface.handle())
         .unwrap()
         .iter()
         .min()
         .unwrap();
+
+    let mut presenter = Presenter::new(queue.clone(), surface).unwrap();
+
+    presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
+
+    presenter.present_mode = present_mode;
 
     let mut image_views = vec![];
 
@@ -374,6 +387,7 @@ fn main() {
                 .iter()
                 .map(|image| {
                     image
+                        .clone()
                         .create_image_view(
                             Format::B8G8R8A8_SRGB,
                             defaults::MAPPING_RGBA,
@@ -387,6 +401,7 @@ fn main() {
                 .iter()
                 .map(|image_view| {
                     render_pass
+                        .clone()
                         .create_framebuffer(
                             &[image_view.handle()],
                             presenter.width(),
@@ -465,7 +480,7 @@ fn main() {
 
         fence.reset().unwrap();
 
-        command_pool.reset().unwrap();
+        command_buffer.command_pool.reset().unwrap();
     }
 
     println!("Done");

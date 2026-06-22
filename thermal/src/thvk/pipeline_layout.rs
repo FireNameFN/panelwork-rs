@@ -2,29 +2,26 @@ use std::sync::Arc;
 
 use ash::{
     VkResult,
-    vk::{PipelineLayout, PipelineLayoutCreateInfo, PushConstantRange},
+    vk::{DescriptorSetLayout, PipelineLayout, PipelineLayoutCreateInfo, PushConstantRange},
 };
-use thermal_derive::ThDeviceHandle;
 
-use crate::thvk::{
-    descriptor_set_layout::ThDescriptorSetLayout, device::ThDevice, handle::ThHandle,
-};
+use crate::thvk::{device::ThDevice, handle::ThDeviceHandle};
 
 #[derive(ThDeviceHandle)]
-pub struct ThPipelineLayout {
+pub struct ThPipelineLayout<T: ThDeviceHandle<DescriptorSetLayout>> {
     handle: PipelineLayout,
 
     device: Arc<ThDevice>,
 
-    set_layouts: Vec<Arc<ThDescriptorSetLayout>>,
+    set_layouts: Vec<T>,
 }
 
 impl ThDevice {
-    pub fn create_pipeline_layout(
+    pub fn create_pipeline_layout<T: ThDeviceHandle<DescriptorSetLayout>>(
         self: &Arc<ThDevice>,
-        mut set_layouts: Vec<Arc<ThDescriptorSetLayout>>,
+        mut set_layouts: Vec<T>,
         push_ranges: &[PushConstantRange],
-    ) -> VkResult<Arc<ThPipelineLayout>> {
+    ) -> VkResult<ThPipelineLayout<T>> {
         set_layouts.shrink_to_fit();
 
         let set_layouts_ptr = set_layouts
@@ -45,21 +42,21 @@ impl ThDevice {
                 .create_pipeline_layout(&pipeline_layout_info, None)
         }?;
 
-        Ok(Arc::new(ThPipelineLayout {
+        Ok(ThPipelineLayout {
             handle,
             device: self.clone(),
             set_layouts,
-        }))
+        })
     }
 }
 
-impl ThPipelineLayout {
-    pub fn set_layouts(&self) -> &Vec<Arc<ThDescriptorSetLayout>> {
+impl<T: ThDeviceHandle<DescriptorSetLayout>> ThPipelineLayout<T> {
+    pub fn set_layouts(&self) -> &Vec<T> {
         &self.set_layouts
     }
 }
 
-impl Drop for ThPipelineLayout {
+impl<T: ThDeviceHandle<DescriptorSetLayout>> Drop for ThPipelineLayout<T> {
     fn drop(&mut self) {
         unsafe {
             self.device

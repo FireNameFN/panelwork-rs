@@ -23,7 +23,7 @@ impl ThInstance {
     pub fn create_sdl3_surface(
         self: &Arc<ThInstance>,
         window: *mut SDL_Window,
-    ) -> Result<Arc<ThSdl3Surface>, ()> {
+    ) -> Result<ThSdl3Surface, ()> {
         let mut handle = ptr::null_mut();
 
         let ok = unsafe {
@@ -39,10 +39,10 @@ impl ThInstance {
             return Err(());
         }
 
-        Ok(Arc::new(ThSdl3Surface {
+        Ok(ThSdl3Surface {
             handle: SurfaceKHR::from_raw(handle as _),
             instance: self.clone(),
-        }))
+        })
     }
 }
 

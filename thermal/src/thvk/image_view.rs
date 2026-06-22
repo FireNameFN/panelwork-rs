@@ -9,36 +9,33 @@ use ash::{
 };
 use thermal_derive::ThHandle;
 
-use crate::thvk::{
-    device::ThDevice,
-    handle::{ThDeviceHandle, ThSourceHandle},
-};
+use crate::thvk::{device::ThDevice, handle::ThDeviceHandle};
 
 #[derive(ThHandle)]
-pub struct ThImageView<T: ThSourceHandle<Image>> {
+pub struct ThImageView<T: ThDeviceHandle<Image>> {
     handle: ImageView,
 
     image: T,
 }
 
-impl<T: ThSourceHandle<Image>> ThDeviceHandle<ImageView> for ThImageView<T> {
+impl<T: ThDeviceHandle<Image>> ThDeviceHandle<ImageView> for ThImageView<T> {
     fn device(&self) -> &Arc<ThDevice> {
         self.image.device()
     }
 }
 
-pub trait ThImageViewSource: ThSourceHandle<Image> {
+pub trait ThImageViewSource: ThDeviceHandle<Image> + Sized {
     fn create_image_view(
-        &self,
+        self,
         format: Format,
         mapping: ComponentMapping,
         range: ImageSubresourceRange,
     ) -> VkResult<ThImageView<Self>>;
 }
 
-impl<T: ThSourceHandle<Image>> ThImageViewSource for T {
+impl<T: ThDeviceHandle<Image>> ThImageViewSource for T {
     fn create_image_view(
-        &self,
+        self,
         format: Format,
         mapping: ComponentMapping,
         range: ImageSubresourceRange,
@@ -60,18 +57,18 @@ impl<T: ThSourceHandle<Image>> ThImageViewSource for T {
 
         Ok(ThImageView {
             handle,
-            image: self.clone(),
+            image: self,
         })
     }
 }
 
-impl<T: ThSourceHandle<Image>> ThImageView<T> {
+impl<T: ThDeviceHandle<Image>> ThImageView<T> {
     pub fn image(&self) -> &T {
         &self.image
     }
 }
 
-impl<T: ThSourceHandle<Image>> Drop for ThImageView<T> {
+impl<T: ThDeviceHandle<Image>> Drop for ThImageView<T> {
     fn drop(&mut self) {
         unsafe {
             self.image

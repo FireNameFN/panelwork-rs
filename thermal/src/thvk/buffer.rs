@@ -2,27 +2,29 @@ use std::sync::Arc;
 
 use ash::{
     VkResult,
-    vk::{Buffer, BufferCreateInfo, BufferUsageFlags, MemoryPropertyFlags, MemoryRequirements},
+    vk::{
+        Buffer, BufferCreateInfo, BufferUsageFlags, DeviceMemory, MemoryPropertyFlags,
+        MemoryRequirements,
+    },
 };
-use thermal_derive::ThDeviceHandle;
 
-use crate::thvk::{device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle};
+use crate::thvk::{device::ThDevice, device_memory::ThDeviceMemory, handle::ThDeviceHandle};
 
 #[derive(ThDeviceHandle)]
-pub struct ThBuffer {
+pub struct ThBuffer<T: ThDeviceHandle<DeviceMemory>> {
     handle: Buffer,
 
     device: Arc<ThDevice>,
 
-    memory: Option<Arc<ThDeviceMemory>>,
+    memory: Option<T>,
 }
 
 impl ThDevice {
-    pub fn create_buffer(
+    pub fn create_buffer<T: ThDeviceHandle<DeviceMemory>>(
         self: &Arc<ThDevice>,
         size: u64,
         usage: BufferUsageFlags,
-    ) -> VkResult<Arc<ThBuffer>> {
+    ) -> VkResult<ThBuffer<T>> {
         let buffer_info = BufferCreateInfo {
             size,
             usage,
@@ -31,11 +33,11 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.create_buffer(&buffer_info, None) }?;
 
-        Ok(Arc::new(ThBuffer {
+        Ok(ThBuffer {
             handle,
             device: self.clone(),
             memory: None,
-        }))
+        })
     }
 
     pub fn allocate_buffer(
@@ -43,19 +45,19 @@ impl ThDevice {
         size: u64,
         usage: BufferUsageFlags,
         properties: MemoryPropertyFlags,
-    ) -> VkResult<Arc<ThBuffer>> {
+    ) -> VkResult<ThBuffer<ThDeviceMemory>> {
         let mut buffer = self.create_buffer(size, usage)?;
 
         let memory = self.allocate_memory_buffer_properties(&buffer, properties)?;
 
-        Arc::get_mut(&mut buffer).unwrap().bind_memory(memory, 0)?;
+        buffer.bind_memory(memory, 0)?;
 
         Ok(buffer)
     }
 }
 
-impl ThBuffer {
-    pub fn memory(&self) -> Option<&Arc<ThDeviceMemory>> {
+impl<T: ThDeviceHandle<DeviceMemory>> ThBuffer<T> {
+    pub fn memory(&self) -> Option<&T> {
         self.memory.as_ref()
     }
 
@@ -67,7 +69,7 @@ impl ThBuffer {
         }
     }
 
-    pub fn bind_memory(&mut self, memory: Arc<ThDeviceMemory>, offset: u64) -> VkResult<()> {
+    pub fn bind_memory(&mut self, memory: T, offset: u64) -> VkResult<()> {
         unsafe {
             self.device
                 .handle
@@ -80,7 +82,7 @@ impl ThBuffer {
     }
 }
 
-impl Drop for ThBuffer {
+impl<T: ThDeviceHandle<DeviceMemory>> Drop for ThBuffer<T> {
     fn drop(&mut self) {
         unsafe { self.device.handle.destroy_buffer(self.handle, None) }
     }

@@ -18,11 +18,11 @@ use crate::{
 pub struct Presenter<T: ThHandle<SurfaceKHR>> {
     queue: ThQueue,
 
-    surface: T,
+    surface: Arc<T>,
 
     semaphore: ThSemaphore,
 
-    images: Vec<ThSwapchainImage>,
+    images: Vec<ThSwapchainImage<Arc<T>>>,
 
     present_semaphores: Vec<ThSemaphore>,
 
@@ -36,7 +36,7 @@ pub struct Presenter<T: ThHandle<SurfaceKHR>> {
 
     pub present_mode: PresentModeKHR,
 
-    swapchain: Option<Arc<ThSwapchain>>,
+    swapchain: Option<Arc<ThSwapchain<Arc<T>>>>,
 }
 
 impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
@@ -45,7 +45,7 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
 
         Ok(Self {
             queue,
-            surface,
+            surface: Arc::new(surface),
             semaphore,
             images: vec![],
             present_semaphores: vec![],
@@ -70,7 +70,7 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
         &self.semaphore
     }
 
-    pub fn images(&self) -> &Vec<ThSwapchainImage> {
+    pub fn images(&self) -> &Vec<ThSwapchainImage<Arc<T>>> {
         &self.images
     }
 
@@ -120,7 +120,7 @@ impl<T: ThHandle<SurfaceKHR>> Presenter<T> {
         );
 
         let swapchain = self.queue.device().create_swapchain(
-            self.surface.handle(),
+            self.surface.clone(),
             capabilities.min_image_count,
             self.format,
             extent(self.width, self.height),

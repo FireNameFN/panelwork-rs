@@ -8,43 +8,47 @@ use ash::{
         SwapchainCreateInfoKHR, SwapchainKHR,
     },
 };
-use thermal_derive::ThHandle;
 
-use crate::thvk::{device::ThDevice, handle::ThDeviceHandle};
+use crate::thvk::{
+    device::ThDevice,
+    handle::{ThDeviceHandle, ThHandle},
+};
 
 #[derive(ThDeviceHandle)]
-pub struct ThSwapchain {
+pub struct ThSwapchain<T: ThHandle<SurfaceKHR>> {
     handle: SwapchainKHR,
 
     device: Arc<ThDevice>,
+
+    _surface: T,
 }
 
 #[derive(ThHandle, Clone)]
-pub struct ThSwapchainImage {
+pub struct ThSwapchainImage<T: ThHandle<SurfaceKHR>> {
     handle: Image,
 
-    swapchain: Arc<ThSwapchain>,
+    swapchain: Arc<ThSwapchain<T>>,
 }
 
-impl ThDeviceHandle<Image> for ThSwapchainImage {
+impl<T: ThHandle<SurfaceKHR>> ThDeviceHandle<Image> for ThSwapchainImage<T> {
     fn device(&self) -> &Arc<ThDevice> {
-        &self.swapchain.device
+        self.swapchain.device()
     }
 }
 
 impl ThDevice {
-    pub fn create_swapchain(
+    pub fn create_swapchain<T: ThHandle<SurfaceKHR>>(
         self: &Arc<ThDevice>,
-        surface: SurfaceKHR,
+        surface: T,
         min_image_count: u32,
         format: Format,
         extent: Extent2D,
         usage: ImageUsageFlags,
         present_mode: PresentModeKHR,
         old_swapchain: Option<SwapchainKHR>,
-    ) -> VkResult<Arc<ThSwapchain>> {
+    ) -> VkResult<Arc<ThSwapchain<T>>> {
         let swapchain_info = SwapchainCreateInfoKHR {
-            surface,
+            surface: surface.handle(),
             min_image_count,
             image_format: format,
             image_extent: extent,
@@ -65,12 +69,13 @@ impl ThDevice {
         Ok(Arc::new(ThSwapchain {
             handle,
             device: self.clone(),
+            _surface: surface,
         }))
     }
 }
 
-impl ThSwapchain {
-    pub fn images(self: &Arc<ThSwapchain>) -> VkResult<Vec<ThSwapchainImage>> {
+impl<T: ThHandle<SurfaceKHR>> ThSwapchain<T> {
+    pub fn images(self: &Arc<Self>) -> VkResult<Vec<ThSwapchainImage<T>>> {
         let images = unsafe {
             self.device
                 .swapchain_device
@@ -122,7 +127,7 @@ impl ThSwapchain {
     }
 }
 
-impl Drop for ThSwapchain {
+impl<T: ThHandle<SurfaceKHR>> Drop for ThSwapchain<T> {
     fn drop(&mut self) {
         unsafe {
             self.device

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use ash::{
     VkResult,
     vk::{
@@ -14,6 +12,8 @@ use crate::{
     primitives::vk::{extent, extent3d},
     thvk::{
         command_buffer::ThCommandBuffer,
+        command_pool::ThCommandPool,
+        device_memory::ThDeviceMemory,
         fence::ThFence,
         handle::{ThDeviceHandle, ThHandle},
         image::ThImage,
@@ -22,7 +22,7 @@ use crate::{
 };
 
 pub struct Command {
-    command_buffer: ThCommandBuffer,
+    command_buffer: ThCommandBuffer<ThCommandPool>,
 
     fence: ThFence,
 }
@@ -67,7 +67,7 @@ impl Command {
         width: u32,
         height: u32,
         pixel_size: u32,
-    ) -> VkResult<Arc<ThImage>> {
+    ) -> VkResult<ThImage<ThDeviceMemory>> {
         let image = self.command_buffer.device().allocate_image(
             format,
             extent(width, height),

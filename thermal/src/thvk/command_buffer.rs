@@ -4,7 +4,7 @@ use ash::{
     VkResult,
     vk::{
         self, AccessFlags, Buffer, ClearValue, CommandBuffer, CommandBufferBeginInfo,
-        CommandBufferUsageFlags, DependencyFlags, DescriptorSet, Framebuffer, Image,
+        CommandBufferUsageFlags, CommandPool, DependencyFlags, DescriptorSet, Framebuffer, Image,
         ImageAspectFlags, ImageLayout, ImageMemoryBarrier, ImageSubresourceRange, Pipeline,
         PipelineBindPoint, PipelineLayout, PipelineStageFlags, Rect2D, RenderPass,
         RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, Viewport,
@@ -12,22 +12,22 @@ use ash::{
 };
 use thermal_derive::ThHandle;
 
-use crate::thvk::{command_pool::ThCommandPool, device::ThDevice, handle::ThDeviceHandle};
+use crate::thvk::{device::ThDevice, handle::ThDeviceHandle};
 
 #[derive(ThHandle)]
-pub struct ThCommandBuffer {
+pub struct ThCommandBuffer<T: ThDeviceHandle<CommandPool>> {
     pub handle: CommandBuffer,
 
-    pub command_pool: Arc<ThCommandPool>,
+    pub command_pool: T,
 }
 
-impl ThDeviceHandle<CommandBuffer> for ThCommandBuffer {
+impl<T: ThDeviceHandle<CommandPool>> ThDeviceHandle<CommandBuffer> for ThCommandBuffer<T> {
     fn device(&self) -> &Arc<ThDevice> {
         self.command_pool.device()
     }
 }
 
-impl ThCommandBuffer {
+impl<T: ThDeviceHandle<CommandPool>> ThCommandBuffer<T> {
     pub fn begin(&self, flags: CommandBufferUsageFlags) -> VkResult<()> {
         let begin_info = CommandBufferBeginInfo {
             flags,

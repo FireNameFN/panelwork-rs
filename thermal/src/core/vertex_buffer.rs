@@ -2,16 +2,18 @@ use std::sync::Arc;
 
 use ash::vk::{Buffer, BufferUsageFlags, MemoryPropertyFlags};
 
-use crate::thvk::{buffer::ThBuffer, device::ThDevice, handle::ThHandle};
+use crate::thvk::{
+    buffer::ThBuffer, device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle,
+};
 
 pub struct VertexBuffer<T: Clone> {
     device: Arc<ThDevice>,
 
     vertices: Vec<T>,
 
-    old_buffers: Vec<ThBuffer>,
+    old_buffers: Vec<ThBuffer<ThDeviceMemory>>,
 
-    last_buffer: ThBuffer,
+    last_buffer: ThBuffer<ThDeviceMemory>,
 
     last_capacity: u64,
 }
@@ -78,16 +80,13 @@ impl<T: Clone> VertexBuffer<T> {
         self.last_capacity = capacity;
     }
 
-    fn create_buffer(device: &Arc<ThDevice>, capacity: u64) -> ThBuffer {
-        Arc::into_inner(
-            device
-                .allocate_buffer(
-                    capacity * size_of::<T>() as u64,
-                    BufferUsageFlags::VERTEX_BUFFER,
-                    MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
-                )
-                .unwrap(),
-        )
-        .unwrap()
+    fn create_buffer(device: &Arc<ThDevice>, capacity: u64) -> ThBuffer<ThDeviceMemory> {
+        device
+            .allocate_buffer(
+                capacity * size_of::<T>() as u64,
+                BufferUsageFlags::VERTEX_BUFFER,
+                MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
+            )
+            .unwrap()
     }
 }

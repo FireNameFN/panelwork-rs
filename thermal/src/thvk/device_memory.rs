@@ -7,9 +7,13 @@ use ash::{
         MemoryMapFlags, MemoryPropertyFlags, TaggedStructure,
     },
 };
-use thermal_derive::ThDeviceHandle;
 
-use crate::thvk::{buffer::ThBuffer, device::ThDevice, handle::ThHandle, image::ThImage};
+use crate::thvk::{
+    buffer::ThBuffer,
+    device::ThDevice,
+    handle::{ThDeviceHandle, ThHandle},
+    image::ThImage,
+};
 
 #[derive(ThDeviceHandle)]
 pub struct ThDeviceMemory {
@@ -23,7 +27,7 @@ impl ThDevice {
         self: &Arc<ThDevice>,
         size: u64,
         memory_type: u32,
-    ) -> VkResult<Arc<ThDeviceMemory>> {
+    ) -> VkResult<ThDeviceMemory> {
         let memory_info = MemoryAllocateInfo {
             allocation_size: size,
             memory_type_index: memory_type,
@@ -32,10 +36,10 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.allocate_memory(&memory_info, None) }?;
 
-        Ok(Arc::new(ThDeviceMemory {
+        Ok(ThDeviceMemory {
             handle,
             device: self.clone(),
-        }))
+        })
     }
 
     pub fn allocate_memory_buffer(
@@ -43,7 +47,7 @@ impl ThDevice {
         size: u64,
         memory_type: u32,
         buffer: Buffer,
-    ) -> VkResult<Arc<ThDeviceMemory>> {
+    ) -> VkResult<ThDeviceMemory> {
         let mut dedicated_info = MemoryDedicatedAllocateInfo {
             buffer,
             ..Default::default()
@@ -58,17 +62,17 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.allocate_memory(&memory_info, None) }?;
 
-        Ok(Arc::new(ThDeviceMemory {
+        Ok(ThDeviceMemory {
             handle,
             device: self.clone(),
-        }))
+        })
     }
 
-    pub fn allocate_memory_buffer_properties(
+    pub fn allocate_memory_buffer_properties<T: ThDeviceHandle<DeviceMemory>>(
         self: &Arc<ThDevice>,
-        buffer: &ThBuffer,
+        buffer: &ThBuffer<T>,
         properties: MemoryPropertyFlags,
-    ) -> VkResult<Arc<ThDeviceMemory>> {
+    ) -> VkResult<ThDeviceMemory> {
         let requirements = buffer.memory_requirements();
 
         let memory_type = self
@@ -84,7 +88,7 @@ impl ThDevice {
         size: u64,
         memory_type: u32,
         image: Image,
-    ) -> VkResult<Arc<ThDeviceMemory>> {
+    ) -> VkResult<ThDeviceMemory> {
         let mut dedicated_info = MemoryDedicatedAllocateInfo {
             image,
             ..Default::default()
@@ -99,17 +103,17 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.allocate_memory(&memory_info, None) }?;
 
-        Ok(Arc::new(ThDeviceMemory {
+        Ok(ThDeviceMemory {
             handle,
             device: self.clone(),
-        }))
+        })
     }
 
-    pub fn allocate_memory_image_properties(
+    pub fn allocate_memory_image_properties<T: ThDeviceHandle<DeviceMemory>>(
         self: &Arc<ThDevice>,
-        image: &ThImage,
+        image: &ThImage<T>,
         properties: MemoryPropertyFlags,
-    ) -> VkResult<Arc<ThDeviceMemory>> {
+    ) -> VkResult<ThDeviceMemory> {
         let requirements = image.memory_requirements();
 
         let memory_type = self

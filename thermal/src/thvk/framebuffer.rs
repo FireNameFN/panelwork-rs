@@ -2,35 +2,43 @@ use std::sync::Arc;
 
 use ash::{
     VkResult,
-    vk::{Framebuffer, FramebufferCreateInfo, ImageView},
+    vk::{Framebuffer, FramebufferCreateInfo, ImageView, RenderPass},
 };
 
 use crate::thvk::{
     device::ThDevice,
     handle::{ThDeviceHandle, ThHandle},
-    render_pass::ThRenderPass,
 };
 
 #[derive(ThHandle)]
-pub struct ThFramebuffer {
+pub struct ThFramebuffer<T: ThDeviceHandle<RenderPass>> {
     handle: Framebuffer,
 
-    render_pass: Arc<ThRenderPass>,
+    render_pass: T,
 }
 
-impl ThDeviceHandle<Framebuffer> for ThFramebuffer {
+impl<T: ThDeviceHandle<RenderPass>> ThDeviceHandle<Framebuffer> for ThFramebuffer<T> {
     fn device(&self) -> &Arc<ThDevice> {
         self.render_pass.device()
     }
 }
 
-impl ThRenderPass {
-    pub fn create_framebuffer(
-        self: &Arc<ThRenderPass>,
+pub trait ThRenderPassSource: ThDeviceHandle<RenderPass> + Sized {
+    fn create_framebuffer(
+        self,
         attachments: &[ImageView],
         width: u32,
         height: u32,
-    ) -> VkResult<ThFramebuffer> {
+    ) -> VkResult<ThFramebuffer<Self>>;
+}
+
+impl<T: ThDeviceHandle<RenderPass>> ThRenderPassSource for T {
+    fn create_framebuffer(
+        self,
+        attachments: &[ImageView],
+        width: u32,
+        height: u32,
+    ) -> VkResult<ThFramebuffer<T>> {
         let framebuffer_info = FramebufferCreateInfo {
             render_pass: self.handle(),
             attachment_count: attachments.len() as u32,
@@ -49,18 +57,18 @@ impl ThRenderPass {
 
         Ok(ThFramebuffer {
             handle,
-            render_pass: self.clone(),
+            render_pass: self,
         })
     }
 }
 
-impl ThFramebuffer {
-    pub fn render_pass(&self) -> &Arc<ThRenderPass> {
+impl<T: ThDeviceHandle<RenderPass>> ThFramebuffer<T> {
+    pub fn render_pass(&self) -> &T {
         &self.render_pass
     }
 }
 
-impl Drop for ThFramebuffer {
+impl<T: ThDeviceHandle<RenderPass>> Drop for ThFramebuffer<T> {
     fn drop(&mut self) {
         unsafe {
             self.render_pass

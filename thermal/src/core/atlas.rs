@@ -1,8 +1,9 @@
-use std::sync::Arc;
-
 use ash::{VkResult, vk::Format};
 
-use crate::{core::command::Command, thvk::image::ThImage};
+use crate::{
+    core::command::Command,
+    thvk::{device_memory::ThDeviceMemory, image::ThImage},
+};
 
 pub struct Atlas {
     pixel_size: u32,
@@ -17,8 +18,8 @@ pub struct Atlas {
 }
 
 impl Atlas {
-    pub fn new(width: u32, height: u32, pixel_size: u32) -> Atlas {
-        Atlas {
+    pub fn new(width: u32, height: u32, pixel_size: u32) -> Self {
+        Self {
             pixel_size,
             width,
             height,
@@ -48,7 +49,7 @@ impl Atlas {
         command: Command,
         format: Format,
         mip_levels: u32,
-    ) -> VkResult<Arc<ThImage>> {
+    ) -> VkResult<ThImage<ThDeviceMemory>> {
         command.create_texture(
             format,
             mip_levels,

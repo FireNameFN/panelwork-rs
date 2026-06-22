@@ -20,7 +20,7 @@ impl ThDevice {
         self: &Arc<ThDevice>,
         attachments: &[AttachmentDescription],
         subpasses: &[SubpassDescription],
-    ) -> VkResult<Arc<ThRenderPass>> {
+    ) -> VkResult<ThRenderPass> {
         let render_pass_info = RenderPassCreateInfo {
             attachment_count: attachments.len() as u32,
             p_attachments: attachments.as_ptr(),
@@ -31,10 +31,10 @@ impl ThDevice {
 
         let handle = unsafe { self.handle.create_render_pass(&render_pass_info, None) }?;
 
-        Ok(Arc::new(ThRenderPass {
+        Ok(ThRenderPass {
             handle,
             device: self.clone(),
-        }))
+        })
     }
 }
 

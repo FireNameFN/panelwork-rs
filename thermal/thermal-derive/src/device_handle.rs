@@ -11,14 +11,16 @@ pub fn impl_th_device_handle(ast: &DeriveInput) -> TokenStream {
 
     let thermal = util::get_thermal_crate();
 
+    let (generics_impl, generics_ty, generics_where) = ast.generics.split_for_impl();
+
     let generated = quote! {
-        impl #thermal::thvk::handle::ThHandle<#ty> for #name {
+        impl #generics_impl #thermal::thvk::handle::ThHandle<#ty> for #name #generics_ty #generics_where {
             fn handle(&self) -> #ty {
                 self.handle
             }
         }
 
-        impl #thermal::thvk::handle::ThDeviceHandle<#ty> for #name {
+        impl #generics_impl #thermal::thvk::handle::ThDeviceHandle<#ty> for #name #generics_ty #generics_where {
             fn device(&self) -> &::std::sync::Arc<#thermal::thvk::device::ThDevice> {
                 &self.device
             }

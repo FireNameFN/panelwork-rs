@@ -6,7 +6,7 @@ use ash::{
         self, BlendFactor, BlendOp, ColorComponentFlags, DynamicState, GraphicsPipelineCreateInfo,
         Pipeline, PipelineCache, PipelineColorBlendAttachmentState,
         PipelineColorBlendStateCreateInfo, PipelineDynamicStateCreateInfo,
-        PipelineInputAssemblyStateCreateInfo, PipelineMultisampleStateCreateInfo,
+        PipelineInputAssemblyStateCreateInfo, PipelineLayout, PipelineMultisampleStateCreateInfo,
         PipelineRasterizationStateCreateInfo, PipelineShaderStageCreateInfo,
         PipelineVertexInputStateCreateInfo, PipelineViewportStateCreateInfo, PrimitiveTopology,
         RenderPass, SampleCountFlags, ShaderModule, ShaderStageFlags,
@@ -17,17 +17,16 @@ use ash::{
 use crate::thvk::{
     device::ThDevice,
     handle::{ThDeviceHandle, ThHandle},
-    pipeline_layout::ThPipelineLayout,
 };
 
 #[derive(ThHandle)]
-pub struct ThPipeline {
+pub struct ThPipeline<T: ThDeviceHandle<PipelineLayout>> {
     handle: Pipeline,
 
-    layout: Arc<ThPipelineLayout>,
+    layout: T,
 }
 
-impl ThDeviceHandle<Pipeline> for ThPipeline {
+impl<T: ThDeviceHandle<PipelineLayout>> ThDeviceHandle<Pipeline> for ThPipeline<T> {
     fn device(&self) -> &Arc<ThDevice> {
         self.layout.device()
     }
@@ -47,12 +46,20 @@ pub struct GraphicsPipelineSettings<'a> {
     pub sample_shading: Option<f32>,
 }
 
-impl ThPipelineLayout {
-    pub fn create_graphics_pipeline(
-        self: &Arc<ThPipelineLayout>,
+pub trait ThPipelineSource: ThDeviceHandle<PipelineLayout> + Sized {
+    fn create_graphics_pipeline(
+        self,
         render_pass: RenderPass,
         settings: GraphicsPipelineSettings,
-    ) -> VkResult<ThPipeline> {
+    ) -> VkResult<ThPipeline<Self>>;
+}
+
+impl<T: ThDeviceHandle<PipelineLayout>> ThPipelineSource for T {
+    fn create_graphics_pipeline(
+        self,
+        render_pass: RenderPass,
+        settings: GraphicsPipelineSettings,
+    ) -> VkResult<ThPipeline<T>> {
         let stages_info = [
             PipelineShaderStageCreateInfo {
                 stage: ShaderStageFlags::VERTEX,
@@ -154,18 +161,18 @@ impl ThPipelineLayout {
 
         Ok(ThPipeline {
             handle: handles[0],
-            layout: self.clone(),
+            layout: self,
         })
     }
 }
 
-impl ThPipeline {
-    pub fn layout(&self) -> &Arc<ThPipelineLayout> {
+impl<T: ThDeviceHandle<PipelineLayout>> ThPipeline<T> {
+    pub fn layout(&self) -> &T {
         &self.layout
     }
 }
 
-impl Drop for ThPipeline {
+impl<T: ThDeviceHandle<PipelineLayout>> Drop for ThPipeline<T> {
     fn drop(&mut self) {
         unsafe {
             self.layout
