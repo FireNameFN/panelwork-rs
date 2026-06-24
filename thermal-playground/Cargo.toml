@@ -7,7 +7,6 @@ edition = "2024"
 quote = "1.0.45"
 
 [dependencies]
-ash = { workspace = true }
 png = "0.18.1"
 sdl3 = "0.18.4"
 thermal = { path = "../thermal", features = ["sdl3"] }

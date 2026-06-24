@@ -1,6 +1,11 @@
 struct VSInput {
   float2 position; // sb/vertex
   float2 uv;       // sb/vertex
+  float4 color;    // sb/vertex
+
+  float2 matX;  // sb/instance
+  float2 matY;  // sb/instance
+  float2 trans; // sb/instance
 }
 
 struct VSOutput {
@@ -11,8 +16,11 @@ struct VSOutput {
 
 [shader("vertex")]
 VSOutput main(VSInput input) {
-  VSOutput output = { float4(1, 1, 1, 1), input.uv,
-                      float4(input.position, 0, 1) };
+  float2x3 matrix = float2x3(float3(input.matX, input.trans.x),
+                             float3(input.matY, input.trans.y));
+
+  VSOutput output = { input.color, input.uv,
+                      float4(mul(matrix, float3(input.position, 1)), 1) };
 
   return output;
 }

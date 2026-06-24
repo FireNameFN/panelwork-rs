@@ -8,6 +8,7 @@ sdl3 = ["dep:sdl3-sys"]
 
 [dependencies]
 ash = { workspace = true }
+glam = { version = "0.33.1", default-features = false, features = ["std"] }
 sdl3-sys = { version = "0.6.6", optional = true }
 slang-builder-runtime = { path = "../slang-builder-runtime" }
 thermal-derive = { path = "thermal-derive" }

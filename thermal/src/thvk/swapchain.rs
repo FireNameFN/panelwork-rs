@@ -20,7 +20,7 @@ pub struct ThSwapchain<T: ThHandle<SurfaceKHR>> {
 
     device: Arc<ThDevice>,
 
-    _surface: T,
+    surface: T,
 }
 
 #[derive(ThHandle, Clone)]
@@ -69,12 +69,16 @@ impl ThDevice {
         Ok(Arc::new(ThSwapchain {
             handle,
             device: self.clone(),
-            _surface: surface,
+            surface,
         }))
     }
 }
 
 impl<T: ThHandle<SurfaceKHR>> ThSwapchain<T> {
+    pub fn surface(&self) -> &T {
+        &self.surface
+    }
+
     pub fn images(self: &Arc<Self>) -> VkResult<Vec<ThSwapchainImage<T>>> {
         let images = unsafe {
             self.device

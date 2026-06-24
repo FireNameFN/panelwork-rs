@@ -1,14 +1,17 @@
 use std::{ffi::CStr, io::Cursor};
 
-use ash::vk::{
+use png::{Decoder, Transformations};
+use sdl3::event::{Event, WindowEvent};
+use thermal::ash::vk::{
     self, AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp,
     ClearColorValue, ClearValue, CommandBufferLevel, CommandBufferUsageFlags,
     CommandPoolCreateFlags, DescriptorPoolSize, DescriptorType, Filter, Format, ImageLayout,
     ImageUsageFlags, PipelineBindPoint, PipelineStageFlags, SampleCountFlags, SamplerAddressMode,
     SubpassContents, SubpassDescription,
 };
-use png::{Decoder, Transformations};
-use sdl3::event::{Event, WindowEvent};
+use thermal::glam::Vec4;
+use thermal::mesh::rect::Rect;
+use thermal::primitives::viewport_matrix;
 use thermal::{
     core::{atlas::Atlas, command::Command, presenter::Presenter, vertex_buffer::VertexBuffer},
     defaults,
@@ -16,10 +19,7 @@ use thermal::{
         handle::ThHandleDeviceExt, physical_device::ThPhysicalDeviceIteratorExt,
         result::SwapchainResultExt, sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
     },
-    primitives::{
-        vertex,
-        vk::{rect, viewport},
-    },
+    primitives::vk::{rect, viewport},
     sdl3_util,
     thvk::{
         descriptor_set::Binding,
@@ -313,16 +313,19 @@ fn main() {
         ],
     );
 
-    let mut vertex_buffer = VertexBuffer::new(device, 32);
+    let mut vertex_buffer = VertexBuffer::new(device.clone(), 32);
 
-    let (buffer, _) = vertex_buffer.add(&[
-        vertex(-0.5, -0.5, 0., 0.),
-        vertex(0.5, -0.5, 1., 0.),
-        vertex(-0.5, 0.5, 0., 1.),
-        vertex(0.5, -0.5, 1., 0.),
-        vertex(-0.5, 0.5, 0., 1.),
-        vertex(0.5, 0.5, 1., 1.),
-    ]);
+    let color_white = Vec4::ONE;
+
+    //let color_red = Vec4::new(1., 0., 0., 1.);
+
+    let mesh_rect = Rect::new(100., 100., 700., 700., color_white);
+
+    let (buffer, _) = mesh_rect.push(&mut vertex_buffer);
+
+    let mut matrix_buffer = VertexBuffer::new(device, 32);
+
+    let (m_buffer, _) = matrix_buffer.add(&[viewport_matrix(0., 0., 1280., 720.)]);
 
     let window = video
         .window("Thermal", 1280, 720)
@@ -445,7 +448,7 @@ fn main() {
 
         command_buffer.cmd_set_scissor(rect(0, 0, presenter.width(), presenter.height()));
 
-        command_buffer.cmd_bind_vertex_buffers(0, &[buffer], &[0]);
+        command_buffer.cmd_bind_vertex_buffers(0, &[buffer, m_buffer], &[0, 0]);
 
         command_buffer.cmd_bind_pipeline(texture_pipeline.handle());
 
@@ -463,6 +466,8 @@ fn main() {
         command_buffer.end().unwrap();
 
         vertex_buffer.flush();
+
+        matrix_buffer.flush();
 
         queue
             .submit(
