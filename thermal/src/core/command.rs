@@ -82,7 +82,7 @@ impl Command {
             MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
         )?;
 
-        buffer.memory().unwrap().copy_from_unmapped(slice)?;
+        buffer.memory().unwrap().copy_from(slice)?;
 
         let image_copy = BufferImageCopy {
             buffer_row_length: width,

@@ -10,7 +10,10 @@ use ash::{
 
 use crate::{
     primitives::vk::extent3d,
-    thvk::{device::ThDevice, device_memory::ThDeviceMemory, handle::ThDeviceHandle},
+    thvk::{
+        device::ThDevice, device_memory::ThDeviceMemory, handle::ThDeviceHandle,
+        memory_mapping::MemoryMappable,
+    },
 };
 
 #[derive(ThDeviceHandle)]
@@ -102,6 +105,14 @@ impl<T: ThDeviceHandle<DeviceMemory>> ThImage<T> {
         self.memory = Some(memory);
 
         Ok(())
+    }
+}
+
+impl<T: ThDeviceHandle<DeviceMemory>> MemoryMappable for ThImage<T> {
+    type Memory = T;
+
+    fn memory(&self) -> &Self::Memory {
+        self.memory.as_ref().unwrap()
     }
 }
 

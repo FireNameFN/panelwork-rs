@@ -1,4 +1,4 @@
-use std::{ffi::c_void, sync::Arc};
+use std::sync::Arc;
 
 use ash::{
     VkResult,
@@ -13,6 +13,7 @@ use crate::thvk::{
     device::ThDevice,
     handle::{ThDeviceHandle, ThHandle},
     image::ThImage,
+    memory_mapping::MemoryMappable,
 };
 
 #[derive(ThDeviceHandle)]
@@ -20,8 +21,6 @@ pub struct ThDeviceMemory {
     handle: DeviceMemory,
 
     device: Arc<ThDevice>,
-
-    mapping: Option<*mut c_void>,
 }
 
 impl ThDevice {
@@ -41,7 +40,6 @@ impl ThDevice {
         Ok(ThDeviceMemory {
             handle,
             device: self.clone(),
-            mapping: None,
         })
     }
 
@@ -68,7 +66,6 @@ impl ThDevice {
         Ok(ThDeviceMemory {
             handle,
             device: self.clone(),
-            mapping: None,
         })
     }
 
@@ -110,7 +107,6 @@ impl ThDevice {
         Ok(ThDeviceMemory {
             handle,
             device: self.clone(),
-            mapping: None,
         })
     }
 
@@ -131,34 +127,7 @@ impl ThDevice {
 }
 
 impl ThDeviceMemory {
-    pub fn map(&mut self) -> VkResult<()> {
-        self.mapping = Some(unsafe {
-            self.device.handle.map_memory(
-                self.handle,
-                0,
-                ash::vk::WHOLE_SIZE,
-                MemoryMapFlags::empty(),
-            )
-        }?);
-
-        Ok(())
-    }
-
-    pub fn unmap(&mut self) {
-        unsafe { self.device.handle.unmap_memory(self.handle) };
-
-        self.mapping = None;
-    }
-
-    pub fn copy_from_mapped(&self, slice: &[impl Clone]) {
-        unsafe {
-            self.mapping
-                .unwrap()
-                .copy_from_nonoverlapping(slice.as_ptr().cast(), std::mem::size_of_val(slice))
-        };
-    }
-
-    pub fn copy_from_unmapped(&self, slice: &[impl Clone]) -> VkResult<()> {
+    pub fn copy_from(&self, slice: &[impl Clone]) -> VkResult<()> {
         if slice.is_empty() {
             return Ok(());
         }
@@ -179,6 +148,14 @@ impl ThDeviceMemory {
         unsafe { self.device.handle.unmap_memory(self.handle) };
 
         Ok(())
+    }
+}
+
+impl MemoryMappable for ThDeviceMemory {
+    type Memory = ThDeviceMemory;
+
+    fn memory(&self) -> &Self::Memory {
+        self
     }
 }
 

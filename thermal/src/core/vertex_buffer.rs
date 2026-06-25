@@ -3,7 +3,11 @@ use std::sync::Arc;
 use ash::vk::{Buffer, BufferUsageFlags, MemoryPropertyFlags};
 
 use crate::thvk::{
-    buffer::ThBuffer, device::ThDevice, device_memory::ThDeviceMemory, handle::ThHandle,
+    buffer::ThBuffer,
+    device::ThDevice,
+    device_memory::ThDeviceMemory,
+    handle::ThHandle,
+    memory_mapping::{MemoryMappableExt, ThMemoryMapping},
 };
 
 pub struct VertexBuffer<T: Clone> {
@@ -13,7 +17,7 @@ pub struct VertexBuffer<T: Clone> {
 
     old_buffers: Vec<ThBuffer<ThDeviceMemory>>,
 
-    last_buffer: ThBuffer<ThDeviceMemory>,
+    last_buffer: ThMemoryMapping<ThBuffer<ThDeviceMemory>>,
 
     last_capacity: u32,
 
@@ -48,10 +52,7 @@ impl<T: Clone> VertexBuffer<T> {
         if self.vertices.len() > self.last_capacity as usize {
             let capacity = self.vertices.len() as u32;
 
-            self.last_buffer
-                .memory()
-                .unwrap()
-                .copy_from_mapped(&self.vertices[..index as usize]);
+            self.last_buffer.copy_from(&self.vertices[..index as usize]);
 
             self.vertices.drain(..index as usize);
 
@@ -63,17 +64,14 @@ impl<T: Clone> VertexBuffer<T> {
         self.index = self.vertices.len() as u32;
 
         (
-            self.last_buffer.handle(),
+            self.last_buffer.memory().handle(),
             index,
             self.vertices.len() as u32 - index,
         )
     }
 
     pub fn flush(&mut self) {
-        self.last_buffer
-            .memory()
-            .unwrap()
-            .copy_from_mapped(&self.vertices);
+        self.last_buffer.copy_from(&self.vertices);
 
         self.vertices.clear();
 
@@ -91,17 +89,18 @@ impl<T: Clone> VertexBuffer<T> {
     fn grow(&mut self, capacity: u32) {
         let buffer = Self::create_buffer(&self.device, capacity);
 
-        let mut old_buffer = std::mem::replace(&mut self.last_buffer, buffer);
+        let old_buffer = std::mem::replace(&mut self.last_buffer, buffer);
 
-        old_buffer.memory().unwrap().unmap();
-
-        self.old_buffers.push(old_buffer);
+        self.old_buffers.push(old_buffer.unmap());
 
         self.last_capacity = capacity;
     }
 
-    fn create_buffer(device: &Arc<ThDevice>, capacity: u32) -> ThBuffer<ThDeviceMemory> {
-        let mut buffer = device
+    fn create_buffer(
+        device: &Arc<ThDevice>,
+        capacity: u32,
+    ) -> ThMemoryMapping<ThBuffer<ThDeviceMemory>> {
+        let buffer = device
             .allocate_buffer(
                 capacity as u64 * size_of::<T>() as u64,
                 BufferUsageFlags::VERTEX_BUFFER,
@@ -109,8 +108,6 @@ impl<T: Clone> VertexBuffer<T> {
             )
             .unwrap();
 
-        buffer.memory().unwrap().map().unwrap();
-
-        buffer
+        buffer.map_memory().unwrap()
     }
 }

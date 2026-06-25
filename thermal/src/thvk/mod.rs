@@ -13,6 +13,7 @@ pub mod image;
 pub mod image_view;
 pub mod instance;
 pub mod library;
+pub mod memory_mapping;
 pub mod physical_device;
 pub mod pipeline;
 pub mod pipeline_layout;

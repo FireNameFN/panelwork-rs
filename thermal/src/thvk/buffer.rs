@@ -8,7 +8,10 @@ use ash::{
     },
 };
 
-use crate::thvk::{device::ThDevice, device_memory::ThDeviceMemory, handle::ThDeviceHandle};
+use crate::thvk::{
+    device::ThDevice, device_memory::ThDeviceMemory, handle::ThDeviceHandle,
+    memory_mapping::MemoryMappable,
+};
 
 #[derive(ThDeviceHandle)]
 pub struct ThBuffer<T: ThDeviceHandle<DeviceMemory>> {
@@ -79,6 +82,14 @@ impl<T: ThDeviceHandle<DeviceMemory>> ThBuffer<T> {
         self.memory = Some(memory);
 
         Ok(())
+    }
+}
+
+impl<T: ThDeviceHandle<DeviceMemory>> MemoryMappable for ThBuffer<T> {
+    type Memory = T;
+
+    fn memory(&self) -> &Self::Memory {
+        self.memory.as_ref().unwrap()
     }
 }
 
