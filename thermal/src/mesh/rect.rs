@@ -1,8 +1,7 @@
-use ash::vk::Buffer;
 use glam::Vec4;
 
 use crate::{
-    core::vertex_buffer::VertexBuffer,
+    mesh::Mesh,
     primitives::{Vertex, vertex},
 };
 
@@ -29,15 +28,17 @@ impl Rect {
     pub const fn new_white(x: f32, y: f32, x2: f32, y2: f32) -> Rect {
         Self::new(x, y, x2, y2, Vec4::ONE)
     }
+}
 
-    pub fn push(&self, buffer: &mut VertexBuffer<Vertex>) -> (Buffer, u32) {
-        buffer.add(&[
+impl Mesh<Vertex, 6> for Rect {
+    fn vertices(&self) -> [Vertex; 6] {
+        [
             self.vertex1,
             self.vertex2,
             self.vertex3,
             self.vertex2,
             self.vertex3,
             self.vertex4,
-        ])
+        ]
     }
 }

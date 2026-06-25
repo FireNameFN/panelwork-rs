@@ -76,13 +76,13 @@ impl Command {
             ImageUsageFlags::TRANSFER_DST | ImageUsageFlags::SAMPLED,
         )?;
 
-        let buffer = self.command_buffer.device().allocate_buffer(
+        let mut buffer = self.command_buffer.device().allocate_buffer(
             (width * height * pixel_size) as u64,
             BufferUsageFlags::TRANSFER_SRC,
             MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
         )?;
 
-        buffer.memory().unwrap().copy_from(slice)?;
+        buffer.memory().unwrap().copy_from_unmapped(slice)?;
 
         let image_copy = BufferImageCopy {
             buffer_row_length: width,

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ffi::c_void, sync::Arc};
 
 use ash::{
     VkResult,
@@ -20,6 +20,8 @@ pub struct ThDeviceMemory {
     handle: DeviceMemory,
 
     device: Arc<ThDevice>,
+
+    mapping: Option<*mut c_void>,
 }
 
 impl ThDevice {
@@ -39,6 +41,7 @@ impl ThDevice {
         Ok(ThDeviceMemory {
             handle,
             device: self.clone(),
+            mapping: None,
         })
     }
 
@@ -65,6 +68,7 @@ impl ThDevice {
         Ok(ThDeviceMemory {
             handle,
             device: self.clone(),
+            mapping: None,
         })
     }
 
@@ -106,6 +110,7 @@ impl ThDevice {
         Ok(ThDeviceMemory {
             handle,
             device: self.clone(),
+            mapping: None,
         })
     }
 
@@ -126,7 +131,34 @@ impl ThDevice {
 }
 
 impl ThDeviceMemory {
-    pub fn copy_from<T>(&self, slice: &[T]) -> VkResult<()> {
+    pub fn map(&mut self) -> VkResult<()> {
+        self.mapping = Some(unsafe {
+            self.device.handle.map_memory(
+                self.handle,
+                0,
+                ash::vk::WHOLE_SIZE,
+                MemoryMapFlags::empty(),
+            )
+        }?);
+
+        Ok(())
+    }
+
+    pub fn unmap(&mut self) {
+        unsafe { self.device.handle.unmap_memory(self.handle) };
+
+        self.mapping = None;
+    }
+
+    pub fn copy_from_mapped(&self, slice: &[impl Clone]) {
+        unsafe {
+            self.mapping
+                .unwrap()
+                .copy_from_nonoverlapping(slice.as_ptr().cast(), std::mem::size_of_val(slice))
+        };
+    }
+
+    pub fn copy_from_unmapped(&self, slice: &[impl Clone]) -> VkResult<()> {
         if slice.is_empty() {
             return Ok(());
         }
@@ -142,7 +174,9 @@ impl ThDeviceMemory {
             )
         }?;
 
-        unsafe { mapping.copy_from(slice.as_ptr().cast(), size) };
+        unsafe { mapping.copy_from_nonoverlapping(slice.as_ptr().cast(), size) };
+
+        unsafe { self.device.handle.unmap_memory(self.handle) };
 
         Ok(())
     }

@@ -9,11 +9,12 @@ use thermal::ash::vk::{
     ImageUsageFlags, PipelineBindPoint, PipelineStageFlags, SampleCountFlags, SamplerAddressMode,
     SubpassContents, SubpassDescription,
 };
-use thermal::glam::Vec4;
+use thermal::core::draw_handle::DrawHandle;
+use thermal::glam::{Affine2, Vec4};
 use thermal::mesh::rect::Rect;
-use thermal::primitives::viewport_matrix;
+use thermal::primitives::{Vertex, viewport_matrix};
 use thermal::{
-    core::{atlas::Atlas, command::Command, presenter::Presenter, vertex_buffer::VertexBuffer},
+    core::{atlas::Atlas, command::Command, presenter::Presenter},
     defaults,
     ext::{
         handle::ThHandleDeviceExt, physical_device::ThPhysicalDeviceIteratorExt,
@@ -313,19 +314,15 @@ fn main() {
         ],
     );
 
-    let mut vertex_buffer = VertexBuffer::new(device.clone(), 32);
-
     let color_white = Vec4::ONE;
 
     //let color_red = Vec4::new(1., 0., 0., 1.);
 
     let mesh_rect = Rect::new(100., 100., 700., 700., color_white);
 
-    let (buffer, _) = mesh_rect.push(&mut vertex_buffer);
+    let viewport_matrix = viewport_matrix(0., 0., 1280., 720.);
 
-    let mut matrix_buffer = VertexBuffer::new(device, 32);
-
-    let (m_buffer, _) = matrix_buffer.add(&[viewport_matrix(0., 0., 1280., 720.)]);
+    let mut draw_handle = DrawHandle::<Vertex, Affine2>::new(device);
 
     let window = video
         .window("Thermal", 1280, 720)
@@ -448,8 +445,6 @@ fn main() {
 
         command_buffer.cmd_set_scissor(rect(0, 0, presenter.width(), presenter.height()));
 
-        command_buffer.cmd_bind_vertex_buffers(0, &[buffer, m_buffer], &[0, 0]);
-
         command_buffer.cmd_bind_pipeline(texture_pipeline.handle());
 
         command_buffer.cmd_bind_descriptor_sets(
@@ -459,15 +454,17 @@ fn main() {
             &descriptor_sets2,
         );
 
-        command_buffer.cmd_draw(6, 1, 0, 0);
+        draw_handle.add(&mesh_rect);
+
+        draw_handle.set_instance(&[viewport_matrix]);
+
+        draw_handle.draw(&command_buffer);
 
         command_buffer.cmd_end_render_pass();
 
         command_buffer.end().unwrap();
 
-        vertex_buffer.flush();
-
-        matrix_buffer.flush();
+        draw_handle.flush();
 
         queue
             .submit(

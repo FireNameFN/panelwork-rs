@@ -57,8 +57,8 @@ impl ThDevice {
 }
 
 impl<T: ThDeviceHandle<DeviceMemory>> ThBuffer<T> {
-    pub fn memory(&self) -> Option<&T> {
-        self.memory.as_ref()
+    pub fn memory(&mut self) -> Option<&mut T> {
+        self.memory.as_mut()
     }
 
     pub fn memory_requirements(&self) -> MemoryRequirements {
