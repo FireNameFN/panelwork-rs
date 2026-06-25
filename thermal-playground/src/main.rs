@@ -359,9 +359,7 @@ fn main() {
 
         loop {
             match event {
-                Event::Quit { .. } => {
-                    break 'outer;
-                }
+                Event::Quit { .. } => break 'outer,
                 Event::Window { win_event, .. } => match win_event {
                     WindowEvent::PixelSizeChanged(_, _) => resize = true,
                     _ => (),
@@ -372,7 +370,7 @@ fn main() {
             event = match event_pump.poll_event() {
                 None => break,
                 Some(event) => event,
-            };
+            }
         }
 
         if resize {
