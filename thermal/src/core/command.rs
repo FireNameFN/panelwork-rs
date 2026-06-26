@@ -76,7 +76,7 @@ impl Command {
             ImageUsageFlags::TRANSFER_DST | ImageUsageFlags::SAMPLED,
         )?;
 
-        let mut buffer = self.command_buffer.device().allocate_buffer(
+        let buffer = self.command_buffer.device().allocate_buffer(
             (width * height * pixel_size) as u64,
             BufferUsageFlags::TRANSFER_SRC,
             MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,

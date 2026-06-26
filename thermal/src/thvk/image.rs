@@ -83,8 +83,8 @@ impl ThDevice {
 }
 
 impl<T: ThDeviceHandle<DeviceMemory>> ThImage<T> {
-    pub fn memory(&mut self) -> Option<&mut T> {
-        self.memory.as_mut()
+    pub fn memory(&self) -> Option<&T> {
+        self.memory.as_ref()
     }
 
     pub fn memory_requirements(&self) -> MemoryRequirements {
@@ -112,7 +112,7 @@ impl<T: ThDeviceHandle<DeviceMemory>> MemoryMappable for ThImage<T> {
     type Memory = T;
 
     fn memory(&self) -> &Self::Memory {
-        self.memory.as_ref().unwrap()
+        self.memory().unwrap()
     }
 }
 
