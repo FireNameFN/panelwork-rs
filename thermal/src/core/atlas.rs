@@ -91,9 +91,13 @@ impl Atlas {
     }
 
     pub fn find_point(&self, width: u32, height: u32) -> Option<(u32, usize, usize)> {
-        let max_width = self.width.checked_sub(width)?;
+        if width > self.width || height > self.height {
+            return None;
+        }
 
-        let max_height = self.height.checked_sub(height)?;
+        let max_width = self.width - width;
+
+        let max_height = self.height - height;
 
         let mut y = u32::MAX;
 
