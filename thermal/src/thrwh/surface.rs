@@ -4,7 +4,7 @@ use ash::{VkResult, vk::SurfaceKHR};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use thermal_derive::ThHandle;
 
-use crate::thvk::rwh_surface_factory::ThRwhSurfaceFactory;
+use crate::thrwh::surface_factory::ThRwhSurfaceFactory;
 
 #[derive(ThHandle)]
 pub struct ThRwhSurface<TDisplay: HasDisplayHandle, TWindow: HasWindowHandle> {

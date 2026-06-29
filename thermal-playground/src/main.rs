@@ -13,7 +13,8 @@ use thermal::core::draw_handle::DrawHandle;
 use thermal::glam::{Affine2, Vec4};
 use thermal::mesh::rect::Rect;
 use thermal::primitives::{Vertex, viewport_matrix};
-use thermal::rwh_util;
+use thermal::thrwh::surface::ThRwhSurface;
+use thermal::thrwh::util::rwh_instance_extensions;
 use thermal::thvk::command_buffer::ThCommandBuffer;
 use thermal::thvk::command_pool::ThCommandPool;
 use thermal::thvk::fence::ThFence;
@@ -24,7 +25,6 @@ use thermal::thvk::pipeline::ThPipeline;
 use thermal::thvk::pipeline_layout::ThPipelineLayout;
 use thermal::thvk::queue::ThQueue;
 use thermal::thvk::render_pass::ThRenderPass;
-use thermal::thvk::rwh_surface::ThRwhSurface;
 use thermal::thvk::swapchain::ThSwapchainImage;
 use thermal::{
     core::{atlas::Atlas, command::Command, presenter::Presenter},
@@ -69,7 +69,7 @@ fn main() {
     event_loop.set_control_flow(ControlFlow::Wait);
 
     let instance_extensions =
-        rwh_util::rwh_instance_extensions(event_loop.display_handle().unwrap().as_raw()).unwrap();
+        rwh_instance_extensions(event_loop.display_handle().unwrap().as_raw()).unwrap();
 
     let library = ThLibrary::load().unwrap();
 
@@ -410,8 +410,6 @@ impl ApplicationHandler for App {
 
         let surface = surface_factory.create_rwh_surface(window.clone()).unwrap();
 
-        self.window = Some(window);
-
         let present_mode = *self
             .queue
             .device()
@@ -428,6 +426,7 @@ impl ApplicationHandler for App {
 
         presenter.present_mode = present_mode;
 
+        self.window = Some(window);
         self.presenter = Some(presenter);
     }
 
