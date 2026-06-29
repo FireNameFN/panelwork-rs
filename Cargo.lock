@@ -1302,16 +1302,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdl3-sys"
-version = "0.6.6+SDL-3.4.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04e7f134def04ed72e6f55187c6c29c72f7dab5d359c4be0dd49c9b97fef59c7"
-dependencies = [
- "pkg-config",
- "vcpkg",
-]
-
-[[package]]
 name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1532,7 +1522,6 @@ dependencies = [
  "ash-window",
  "glam",
  "raw-window-handle",
- "sdl3-sys",
  "slang-builder-runtime",
  "thermal-derive",
 ]
@@ -1685,12 +1674,6 @@ name = "unicode-segmentation"
 version = "1.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
-
-[[package]]
-name = "vcpkg"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "version_check"

@@ -5,13 +5,11 @@ edition = "2024"
 
 [features]
 rwh = ["dep:ash-window", "dep:raw-window-handle"]
-sdl3 = ["dep:sdl3-sys"]
 
 [dependencies]
 ash = { workspace = true }
 ash-window = { git = "https://github.com/ash-rs/ash", optional = true }
 glam = { version = "0.33.1", default-features = false, features = ["std"] }
 raw-window-handle = { version = "0.6.2", optional = true }
-sdl3-sys = { version = "0.6.6", optional = true }
 slang-builder-runtime = { path = "../slang-builder-runtime" }
 thermal-derive = { path = "thermal-derive" }

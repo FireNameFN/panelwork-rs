@@ -23,6 +23,3 @@ pub mod sampler;
 pub mod semaphore;
 pub mod shader_module;
 pub mod swapchain;
-
-#[cfg(feature = "sdl3")]
-pub mod sdl3_surface;
