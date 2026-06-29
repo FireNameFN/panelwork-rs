@@ -26,3 +26,8 @@ pub mod swapchain;
 
 #[cfg(feature = "sdl3")]
 pub mod sdl3_surface;
+
+#[cfg(feature = "rwh")]
+pub mod rwh_surface;
+#[cfg(feature = "rwh")]
+pub mod rwh_surface_factory;

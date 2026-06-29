@@ -19,7 +19,7 @@ impl ThDevice {
     pub fn create_descriptor_set_layout(
         self: &Arc<ThDevice>,
         bindings: &[DescriptorSetLayoutBinding],
-    ) -> VkResult<Arc<ThDescriptorSetLayout>> {
+    ) -> VkResult<ThDescriptorSetLayout> {
         let set_layout_info = DescriptorSetLayoutCreateInfo {
             binding_count: bindings.len() as u32,
             p_bindings: bindings.as_ptr(),
@@ -31,10 +31,10 @@ impl ThDevice {
                 .create_descriptor_set_layout(&set_layout_info, None)
         }?;
 
-        Ok(Arc::new(ThDescriptorSetLayout {
+        Ok(ThDescriptorSetLayout {
             handle,
             device: self.clone(),
-        }))
+        })
     }
 }
 

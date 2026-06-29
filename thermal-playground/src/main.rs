@@ -1,27 +1,39 @@
+use std::sync::Arc;
 use std::{ffi::CStr, io::Cursor};
 
 use png::{Decoder, Transformations};
-use sdl3::event::{Event, WindowEvent};
 use thermal::ash::vk::{
     self, AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp,
     ClearColorValue, ClearValue, CommandBufferLevel, CommandBufferUsageFlags,
-    CommandPoolCreateFlags, DescriptorPoolSize, DescriptorType, Filter, Format, ImageLayout,
-    ImageUsageFlags, PipelineBindPoint, PipelineStageFlags, SampleCountFlags, SamplerAddressMode,
-    SubpassContents, SubpassDescription,
+    CommandPoolCreateFlags, DescriptorPoolSize, DescriptorSet, DescriptorType, Filter, Format,
+    ImageLayout, ImageUsageFlags, PipelineBindPoint, PipelineStageFlags, SampleCountFlags,
+    SamplerAddressMode, SubpassContents, SubpassDescription,
 };
 use thermal::core::draw_handle::DrawHandle;
 use thermal::glam::{Affine2, Vec4};
 use thermal::mesh::rect::Rect;
 use thermal::primitives::{Vertex, viewport_matrix};
+use thermal::rwh_util;
+use thermal::thvk::command_buffer::ThCommandBuffer;
+use thermal::thvk::command_pool::ThCommandPool;
+use thermal::thvk::fence::ThFence;
+use thermal::thvk::framebuffer::ThFramebuffer;
+use thermal::thvk::handle::ThDeviceHandle;
+use thermal::thvk::image_view::ThImageView;
+use thermal::thvk::pipeline::ThPipeline;
+use thermal::thvk::pipeline_layout::ThPipelineLayout;
+use thermal::thvk::queue::ThQueue;
+use thermal::thvk::render_pass::ThRenderPass;
+use thermal::thvk::rwh_surface::ThRwhSurface;
+use thermal::thvk::swapchain::ThSwapchainImage;
 use thermal::{
     core::{atlas::Atlas, command::Command, presenter::Presenter},
     defaults,
     ext::{
         handle::ThHandleDeviceExt, physical_device::ThPhysicalDeviceIteratorExt,
-        result::SwapchainResultExt, sdl3_physical_device::ThPhysicalDeviceSdl3IteratorExt,
+        result::SwapchainResultExt,
     },
     primitives::vk::{rect, viewport},
-    sdl3_util,
     thvk::{
         descriptor_set::Binding,
         descriptor_set_layout::ThDescriptorSetLayout,
@@ -33,6 +45,12 @@ use thermal::{
         pipeline::{GraphicsPipelineSettings, ThPipelineSource},
     },
 };
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::{ControlFlow, EventLoop};
+use winit::platform::wayland::WindowAttributesExtWayland;
+use winit::raw_window_handle::HasDisplayHandle;
+use winit::window::Window;
 
 #[allow(dead_code)]
 const IMAGE: &[u8] = include_bytes!("../resources/OverGreen.png");
@@ -46,15 +64,12 @@ const TEXTURES: &[&[u8]] = include!(concat!(env!("OUT_DIR"), "/textures.rs"));
 fn main() {
     println!("Hello, world!");
 
-    sdl3::hint::set(sdl3::hint::names::VIDEO_DRIVER, "wayland,x11,cocoa,windows");
+    let event_loop = EventLoop::new().unwrap();
 
-    let sdl = sdl3::init().unwrap();
+    event_loop.set_control_flow(ControlFlow::Wait);
 
-    let video = sdl.video().unwrap();
-
-    video.vulkan_load_library_default().unwrap();
-
-    let instance_extensions = sdl3_util::sdl_instance_extensions();
+    let instance_extensions =
+        rwh_util::rwh_instance_extensions(event_loop.display_handle().unwrap().as_raw()).unwrap();
 
     let library = ThLibrary::load().unwrap();
 
@@ -85,7 +100,7 @@ fn main() {
         .unwrap()
         .sort_by_type()
         .into_iter()
-        .find_with_sdl_presentation_support()
+        .find_with_graphics_queue_family()
         .unwrap();
 
     let device = physical_device
@@ -169,9 +184,8 @@ fn main() {
         .unwrap();
 
     let texture_pipeline_layout = device
-        .create_pipeline_layout(descriptor_set_layouts.clone(), &[])
-        .unwrap()
-        .arc();
+        .create_pipeline_layout(descriptor_set_layouts, &[])
+        .unwrap();
 
     #[allow(unused_variables)]
     let solid_pipeline = solid_pipeline_layout
@@ -194,7 +208,6 @@ fn main() {
         .unwrap();
 
     let texture_pipeline = texture_pipeline_layout
-        .clone()
         .create_graphics_pipeline(
             render_pass.handle(),
             GraphicsPipelineSettings {
@@ -215,7 +228,9 @@ fn main() {
 
     let descriptor_sets = descriptor_pool
         .allocate_descriptor_set(
-            &descriptor_set_layouts
+            &texture_pipeline
+                .layout()
+                .set_layouts()
                 .iter()
                 .map(|set_layout| set_layout.handle())
                 .collect::<Vec<_>>(),
@@ -224,7 +239,9 @@ fn main() {
 
     let descriptor_sets2 = descriptor_pool
         .allocate_descriptor_set(
-            &descriptor_set_layouts
+            &texture_pipeline
+                .layout()
+                .set_layouts()
                 .iter()
                 .map(|set_layout| set_layout.handle())
                 .collect::<Vec<_>>(),
@@ -314,117 +331,189 @@ fn main() {
         ],
     );
 
-    let color_white = Vec4::ONE;
-
-    //let color_red = Vec4::new(1., 0., 0., 1.);
-
-    let mesh_rect = Rect::new(100., 100., 700., 700., color_white);
-
     let viewport_matrix = viewport_matrix(0., 0., 1280., 720.);
 
-    let mut draw_handle = DrawHandle::<Vertex, Affine2>::new(device);
+    let draw_handle = DrawHandle::<Vertex, Affine2>::new(device);
 
-    let window = video
-        .window("Thermal", 1280, 720)
-        .resizable()
-        .vulkan()
-        .build()
-        .unwrap();
+    let mut app = App {
+        queue,
+        render_pass,
+        command_buffer,
+        draw_handle,
+        fence,
+        solid_pipeline,
+        texture_pipeline,
+        texture: descriptor_sets2,
+        viewport_matrix,
+        frame: 0,
+        window: None,
+        presenter: None,
+        image_views: vec![],
+        framebuffers: vec![],
+    };
 
-    let surface = instance.create_sdl3_surface(window.raw()).unwrap();
+    event_loop.run_app(&mut app).unwrap();
 
-    let present_mode = *physical_device
-        .surface_present_modes(surface.handle())
-        .unwrap()
-        .iter()
-        .min()
-        .unwrap();
+    println!("Done");
+}
 
-    let mut presenter = Presenter::new(queue.clone(), surface).unwrap();
+struct App {
+    queue: ThQueue,
 
-    presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
+    render_pass: Arc<ThRenderPass>,
 
-    presenter.present_mode = present_mode;
+    command_buffer: ThCommandBuffer<ThCommandPool>,
 
-    let mut image_views = vec![];
+    draw_handle: DrawHandle<Vertex, Affine2>,
 
-    let mut framebuffers = vec![];
+    fence: ThFence,
 
-    let mut event_pump = sdl.event_pump().unwrap();
+    #[allow(dead_code)]
+    solid_pipeline: ThPipeline<ThPipelineLayout<ThDescriptorSetLayout>>,
 
-    let mut resize = true;
+    texture_pipeline: ThPipeline<ThPipelineLayout<ThDescriptorSetLayout>>,
 
-    'outer: loop {
-        let mut event = event_pump.wait_event();
+    texture: Vec<DescriptorSet>,
 
-        loop {
-            match event {
-                Event::Quit { .. } => break 'outer,
-                Event::Window { win_event, .. } => match win_event {
-                    WindowEvent::PixelSizeChanged(_, _) => resize = true,
-                    _ => (),
-                },
-                _ => (),
-            }
+    viewport_matrix: Affine2,
 
-            event = match event_pump.poll_event() {
-                None => break,
-                Some(event) => event,
-            }
+    frame: u64,
+
+    window: Option<Arc<Window>>,
+
+    presenter: Option<Presenter<ThRwhSurface<Arc<Window>, Arc<Window>>>>,
+
+    image_views: Vec<ThImageView<ThSwapchainImage<Arc<ThRwhSurface<Arc<Window>, Arc<Window>>>>>>,
+
+    framebuffers: Vec<ThFramebuffer<Arc<ThRenderPass>>>,
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        let window = Arc::new(
+            event_loop
+                .create_window(
+                    Window::default_attributes()
+                        .with_title("Thermal")
+                        .with_name("thermal", ""),
+                )
+                .unwrap(),
+        );
+
+        let surface_factory = self
+            .queue
+            .device()
+            .physical_device
+            .instance
+            .create_rwh_surface_factory(window.clone())
+            .unwrap();
+
+        let surface = surface_factory.create_rwh_surface(window.clone()).unwrap();
+
+        self.window = Some(window);
+
+        let present_mode = *self
+            .queue
+            .device()
+            .physical_device
+            .surface_present_modes(surface.handle())
+            .unwrap()
+            .iter()
+            .min()
+            .unwrap();
+
+        let mut presenter = Presenter::new(self.queue.clone(), surface).unwrap();
+
+        presenter.usage = ImageUsageFlags::COLOR_ATTACHMENT;
+
+        presenter.present_mode = present_mode;
+
+        self.presenter = Some(presenter);
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        _: winit::window::WindowId,
+        event: winit::event::WindowEvent,
+    ) {
+        match event {
+            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::Resized(_) => self.resize(),
+            WindowEvent::RedrawRequested => self.draw(),
+            WindowEvent::CursorMoved { .. } => self.window().request_redraw(),
+            _ => (),
         }
+    }
+}
 
-        if resize {
-            resize = false;
+impl App {
+    fn window(&self) -> &Window {
+        self.window.as_ref().unwrap()
+    }
 
-            let (width, height) = window.size_in_pixels();
+    fn presenter(&self) -> &Presenter<ThRwhSurface<Arc<Window>, Arc<Window>>> {
+        self.presenter.as_ref().unwrap()
+    }
 
-            presenter.set_size(width, height).unwrap();
+    fn resize(&mut self) {
+        let size = self.window().inner_size();
 
-            image_views = presenter
-                .images()
-                .iter()
-                .map(|image| {
-                    image
-                        .clone()
-                        .create_image_view(
-                            Format::B8G8R8A8_SRGB,
-                            defaults::MAPPING_RGBA,
-                            defaults::SUBRESOURCE_COLOR,
-                        )
-                        .unwrap()
-                })
-                .collect();
+        let presenter = self.presenter.as_mut().unwrap();
 
-            framebuffers = image_views
-                .iter()
-                .map(|image_view| {
-                    render_pass
-                        .clone()
-                        .create_framebuffer(
-                            &[image_view.handle()],
-                            presenter.width(),
-                            presenter.height(),
-                        )
-                        .unwrap()
-                })
-                .collect();
-        }
+        presenter.set_size(size.width, size.height).unwrap();
+
+        self.image_views = presenter
+            .images()
+            .iter()
+            .map(|image| {
+                image
+                    .clone()
+                    .create_image_view(
+                        Format::B8G8R8A8_SRGB,
+                        defaults::MAPPING_RGBA,
+                        defaults::SUBRESOURCE_COLOR,
+                    )
+                    .unwrap()
+            })
+            .collect();
+
+        self.framebuffers = self
+            .image_views
+            .iter()
+            .map(|image_view| {
+                self.render_pass
+                    .clone()
+                    .create_framebuffer(
+                        &[image_view.handle()],
+                        presenter.width(),
+                        presenter.height(),
+                    )
+                    .unwrap()
+            })
+            .collect();
+    }
+
+    fn draw(&mut self) {
+        let presenter = self.presenter();
 
         let Some((index, _)) = presenter.acquire_next_image(u64::MAX).unwrap_out_of_date() else {
             println!("out of date");
 
-            resize = true;
+            self.resize();
 
-            continue;
+            self.window().request_redraw();
+
+            return;
         };
 
-        command_buffer
+        self.command_buffer
             .begin(CommandBufferUsageFlags::ONE_TIME_SUBMIT)
             .unwrap();
 
-        command_buffer.cmd_begin_render_pass(
-            render_pass.handle(),
-            framebuffers[index as usize].handle(),
+        self.command_buffer.cmd_begin_render_pass(
+            self.render_pass.handle(),
+            self.framebuffers[index as usize].handle(),
             rect(0, 0, presenter.width(), presenter.height()),
             &[ClearValue {
                 color: ClearColorValue {
@@ -434,54 +523,68 @@ fn main() {
             SubpassContents::INLINE,
         );
 
-        command_buffer.cmd_set_viewport(viewport(
+        self.command_buffer.cmd_set_viewport(viewport(
             0.,
             0.,
             presenter.width() as f32,
             presenter.height() as f32,
         ));
 
-        command_buffer.cmd_set_scissor(rect(0, 0, presenter.width(), presenter.height()));
+        self.command_buffer
+            .cmd_set_scissor(rect(0, 0, presenter.width(), presenter.height()));
 
-        command_buffer.cmd_bind_pipeline(texture_pipeline.handle());
+        self.command_buffer
+            .cmd_bind_pipeline(self.texture_pipeline.handle());
 
-        command_buffer.cmd_bind_descriptor_sets(
+        self.command_buffer.cmd_bind_descriptor_sets(
             PipelineBindPoint::GRAPHICS,
-            texture_pipeline_layout.handle(),
+            self.texture_pipeline.layout().handle(),
             0,
-            &descriptor_sets2,
+            &self.texture,
         );
 
-        draw_handle.add(&mesh_rect);
+        let color_white = Vec4::ONE;
 
-        draw_handle.set_instance(&[viewport_matrix]);
+        let mesh_rect = Rect::new(
+            100. + self.frame as f32 / 100.,
+            100.,
+            700.,
+            700.,
+            color_white,
+        );
 
-        draw_handle.draw(&command_buffer);
+        self.draw_handle.add(&mesh_rect);
 
-        command_buffer.cmd_end_render_pass();
+        self.draw_handle.set_instance(&[self.viewport_matrix]);
 
-        command_buffer.end().unwrap();
+        self.draw_handle.draw(&self.command_buffer);
 
-        draw_handle.flush();
+        self.command_buffer.cmd_end_render_pass();
 
-        queue
+        self.command_buffer.end().unwrap();
+
+        self.draw_handle.flush();
+
+        let presenter = self.presenter();
+
+        self.queue
             .submit(
-                fence.handle(),
+                self.fence.handle(),
                 &[presenter.semaphore().handle()],
                 &[PipelineStageFlags::BOTTOM_OF_PIPE],
-                &[command_buffer.handle],
+                &[self.command_buffer.handle],
                 &[presenter.present_semaphores()[index as usize].handle()],
             )
             .unwrap();
 
         presenter.present(index).unwrap_out_of_date();
 
-        fence.wait(u64::MAX).unwrap();
+        self.fence.wait(u64::MAX).unwrap();
 
-        fence.reset().unwrap();
+        self.fence.reset().unwrap();
 
-        command_buffer.command_pool.reset().unwrap();
+        self.command_buffer.command_pool.reset().unwrap();
+
+        self.frame += 1;
     }
-
-    println!("Done");
 }

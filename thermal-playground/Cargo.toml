@@ -8,5 +8,5 @@ quote = "1.0.45"
 
 [dependencies]
 png = "0.18.1"
-sdl3 = "0.18.4"
-thermal = { path = "../thermal", features = ["sdl3"] }
+thermal = { path = "../thermal", features = ["rwh"] }
+winit = "0.30.13"

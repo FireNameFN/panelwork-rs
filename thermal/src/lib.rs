@@ -12,5 +12,8 @@ pub mod slang;
 #[cfg(feature = "sdl3")]
 pub mod sdl3_util;
 
+#[cfg(feature = "rwh")]
+pub mod rwh_util;
+
 pub use ash;
 pub use glam;

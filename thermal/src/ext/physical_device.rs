@@ -21,6 +21,8 @@ pub trait ThPhysicalDeviceIteratorExt: Iterator<Item = ThPhysicalDevice> {
         &mut self,
         predicate: P,
     ) -> Option<(ThPhysicalDevice, u32)>;
+
+    fn find_with_graphics_queue_family(&mut self) -> Option<(ThPhysicalDevice, u32)>;
 }
 
 impl<T: Iterator<Item = ThPhysicalDevice>> ThPhysicalDeviceIteratorExt for T {
@@ -48,5 +50,9 @@ impl<T: Iterator<Item = ThPhysicalDevice>> ThPhysicalDeviceIteratorExt for T {
                 .find_queue_family(&mut predicate)
                 .map(|family| (device, family))
         })
+    }
+
+    fn find_with_graphics_queue_family(&mut self) -> Option<(ThPhysicalDevice, u32)> {
+        self.find_with_queue_family(|_, _, flags| flags.contains(QueueFlags::GRAPHICS))
     }
 }
